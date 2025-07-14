@@ -22,7 +22,6 @@ export default function DailyChecklistPage() {
 
   useEffect(() => {
     async function loadChecklist() {
-      // For MVP, assume one checklist per vendor
       const { data: templates } = await client.models.ChecklistTemplate.list()
 
       const firstTemplate = templates[0]
@@ -60,7 +59,7 @@ export default function DailyChecklistPage() {
     const isoDate = now.toISOString().split('T')[0] // YYYY-MM-DD
 
     await client.models.ChecklistEntry.create({
-      vendorId: template.vendorId,
+      merchantId: template.merchantId,
       templateId: template.id,
       date: isoDate,
       checkedItemIds: checkedIds,
