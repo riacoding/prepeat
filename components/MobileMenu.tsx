@@ -28,6 +28,7 @@ export default function MobileMenu({ isLoggedIn }: { isLoggedIn: boolean }) {
           <>
             <DropdownMenuItem onClick={() => router.push('/admin')}>Menus</DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push('/admin/kds')}>KDS</DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push('/admin/checklists')}>Checklists</DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push('/admin/settings')}>Settings</DropdownMenuItem>
           </>
         )}
