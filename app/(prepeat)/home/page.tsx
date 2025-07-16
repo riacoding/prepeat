@@ -1,3 +1,4 @@
+import Flags from '@/components/Flags'
 import { Button } from '@/components/ui/button'
 
 export default function HomePage() {
