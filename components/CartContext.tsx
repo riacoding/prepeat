@@ -40,6 +40,8 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
           console.error('Failed to parse stored menu slug:', e)
         }
       }
+    } else {
+      console.log('lastMenuLoc is undefined')
     }
     return null
   })
