@@ -8,6 +8,7 @@ type MenuContextValue = {
   items: NormalizedItem[]
   menu: EagerMenu
   location: string
+  useImages: boolean
   getItemById: (id: string) => NormalizedItem | undefined
 }
 

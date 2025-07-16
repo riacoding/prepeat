@@ -7,6 +7,7 @@ import { useMenu } from './MenuProvider'
 import CurrencyDisplay from '@/components/CurrencyDisplay'
 import { usePublicMerchant } from '@/components/MerchantPublicContext'
 import { StorageImage } from '@aws-amplify/ui-react-storage'
+import { cn } from '@/lib/utils'
 
 export default function MenuDisplay() {
   const { menu, items, location } = useMenu()
@@ -18,7 +19,9 @@ export default function MenuDisplay() {
       <main className='p-4'>
         {!merchantLogo && <h2 className='text-3xl text-center font-bold mb-5'>{menu.name}</h2>}
 
-        <h3 className='text-2xl font-light mb-4'>{menu.isOffline ? "We'll be right back!" : 'Our Menu'}</h3>
+        <h3 className='text-2xl font-light mb-4'>
+          {menu.isOffline ? "We'll be right back! In the weeds." : 'Our Menu'}
+        </h3>
 
         <div className='flex flex-col gap-2'>
           {menu.isOffline ? (
@@ -30,18 +33,26 @@ export default function MenuDisplay() {
               <Link key={item.id} href={`${location}/item/${item.id}`}>
                 <Card className='overflow-hidden'>
                   <div className='flex h-24'>
-                    <div className='w-1/4 relative'>
-                      {menu.useImages && item.image && item.image === '/placeholder.svg' ? (
-                        <Image src={item.image} alt={item.name} fill className='object-cover rounded border' />
-                      ) : (
-                        <StorageImage
-                          className='w-full h-full object-cover rounded border'
-                          path={`items/${item.catalogItemId}.jpeg`}
-                          alt='food thumbnail'
-                        />
-                      )}
-                    </div>
-                    <CardContent className='w-2/3 p-3 flex justify-between items-center'>
+                    {merchant?.displayImages && (
+                      <div className='w-1/4 relative'>
+                        {item.image && item.image === '/placeholder.svg' ? (
+                          <Image src={item.image} alt={item.name} fill className='object-cover rounded border' />
+                        ) : (
+                          <StorageImage
+                            className='w-full h-full object-cover rounded border'
+                            path={`items/${item.catalogItemId}.jpeg`}
+                            alt='food thumbnail'
+                          />
+                        )}
+                      </div>
+                    )}
+                    <CardContent
+                      className={
+                        merchant?.displayImages
+                          ? cn('w-2/3', 'p-3 flex flex-1 justify-between items-center')
+                          : cn('w-full', 'p-3 flex flex-1 justify-between items-center')
+                      }
+                    >
                       <div>
                         <h3 className='font-medium'>{item.customName || item.name}</h3>
                         <p className='text-sm text-muted-foreground line-clamp-1'>{item.description}</p>

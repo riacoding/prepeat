@@ -33,6 +33,8 @@ export default function CartPage() {
 
   const locationId = menu.squareLocationId
 
+  const taxRate = merchant?.taxRate ? merchant.taxRate / 100 : 0
+
   console.log('locationId', locationId)
 
   const merchantId = merchant?.id
@@ -141,11 +143,13 @@ export default function CartPage() {
                 <Card key={index} className='overflow-hidden'>
                   <CardContent className='p-3'>
                     <div className='flex items-start'>
-                      <div className='w-16 h-16 relative mr-3'>
-                        {item && item.image && (
-                          <Image src={item.image} alt={item.name} fill className='object-cover rounded border' />
-                        )}
-                      </div>
+                      {merchant?.displayImages && (
+                        <div className='w-16 h-16 relative mr-3'>
+                          {item && item.image && (
+                            <Image src={item.image} alt={item.name} fill className='object-cover rounded border' />
+                          )}
+                        </div>
+                      )}
                       <div className='flex-1'>
                         <div className='flex justify-between'>
                           <h3 className='font-medium'>{item.customName ?? item.name}</h3>
@@ -184,9 +188,9 @@ export default function CartPage() {
               </div>
 
               <div className='flex justify-between'>
-                <span>Tax</span>
+                <span>{`Tax ${merchant?.taxRate}%`}</span>
                 <span>
-                  <CurrencyDisplay value={calculateTotal() * 0.0825} />
+                  <CurrencyDisplay value={calculateTotal() * taxRate} />
                 </span>
               </div>
 
@@ -194,7 +198,7 @@ export default function CartPage() {
               <div className='flex justify-between font-bold text-lg'>
                 <span>Total</span>
                 <span>
-                  <CurrencyDisplay value={calculateTotal() + calculateTotal() * 0.0825} />
+                  <CurrencyDisplay value={calculateTotal() + calculateTotal() * taxRate} />
                 </span>
               </div>
             </div>

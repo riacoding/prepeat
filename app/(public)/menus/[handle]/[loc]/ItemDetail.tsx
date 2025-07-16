@@ -10,6 +10,7 @@ import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { useMenu } from './MenuProvider'
 import { CartItem, NormalizedItem, NormalizedTopping } from '@/types'
+import { usePublicMerchant } from '@/components/MerchantPublicContext'
 
 type Topping = {
   id: string
@@ -21,6 +22,7 @@ type Topping = {
 export default function ItemDetail({ item, handle }: { item: NormalizedItem; handle: string }) {
   const { addItem } = useCart()
   const { location } = useMenu()
+  const { merchant } = usePublicMerchant()
   const router = useRouter()
   const [quantity, setQuantity] = useState(1)
   const [selectedToppings, setSelectedToppings] = useState<Record<string, boolean>>({})
@@ -71,9 +73,13 @@ export default function ItemDetail({ item, handle }: { item: NormalizedItem; han
         </div>
       </header>
       <h1 className='text-2xl font-bold'>{item.customName || item.name}</h1>
-      <div className='w-16 h-16 relative mr-3'>
-        {item && item.image && <Image src={item.image} alt={item.name} fill className='object-cover rounded border' />}
-      </div>
+      {merchant?.displayImages && (
+        <div className='w-16 h-16 relative mr-3'>
+          {item && item.image && (
+            <Image src={item.image} alt={item.name} fill className='object-cover rounded border' />
+          )}
+        </div>
+      )}
       <p className='text-muted-foreground'>{item.description}</p>
       <p className='font-semibold text-lg'>${(item.price / 100).toFixed(2)}</p>
 

@@ -14,6 +14,10 @@ const schema = a
       url: a.string(),
       auth: a.string(),
     }),
+    ProductSubscription: a.customType({
+      level: a.enum(['free', 'basic', 'premium']),
+      startDate: a.date(),
+    }),
     User: a
       .model({
         sub: a.string().required(), // Cognito sub
@@ -39,6 +43,11 @@ const schema = a
         locationIds: a.string().array().required(),
         s3ItemKey: a.string(),
         isLinked: a.boolean().default(false),
+        subscription: a.ref('ProductSubscription'),
+        displayImages: a.boolean().default(true),
+        taxRate: a.float(),
+        isTaxable: a.boolean().default(true),
+        timeZone: a.string().default('America/Los Angeles'),
       })
       .secondaryIndexes((index) => [index('squareMerchantId'), index('handle')])
       .authorization((allow) => [
