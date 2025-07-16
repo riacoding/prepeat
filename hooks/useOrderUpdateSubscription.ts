@@ -21,8 +21,8 @@ export function useOrderUpdateSubscription(
   useEffect(() => {
     if (!orderId) return
     let sub: any
-
-    if (isDemo) {
+    console.log('OrderUpdateSubscription', orderId, isDemo)
+    if (isDemo === true) {
       sub = client.models.DemoOrder.onUpdate({
         filter: { id: { eq: orderId } },
         authMode,
@@ -44,6 +44,7 @@ export function useOrderUpdateSubscription(
       }).subscribe({
         next: (data) => {
           const status = data?.fulfillmentStatus
+          console.log('subscribe OrderStatus', status)
           if (status) {
             onStatusChange(status)
           }
