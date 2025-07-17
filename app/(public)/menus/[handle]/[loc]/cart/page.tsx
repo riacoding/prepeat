@@ -23,13 +23,15 @@ export default function CartPage() {
   const [isPlacingOrder, setIsPlacingOrder] = useState(false)
   const [hasHydrated, setHasHydrated] = useState(false)
   const { toast } = useToast()
+
   const { items: cartItems, removeItem, clearCart, menuSlug } = useCart()
   const [backLink, setBackLink] = useState('')
-
-  console.log('Cart Page cart items', cartItems, menuSlug)
   const router = useRouter()
   const { merchant } = usePublicMerchant()
-  const { menu } = useMenu()
+  const { menu, location } = useMenu()
+
+  console.log('Cart Page-cart items', cartItems, menuSlug)
+  console.log('MenuSlug', menuSlug, location)
 
   const locationId = menu.squareLocationId
 
@@ -44,7 +46,7 @@ export default function CartPage() {
   }, [])
 
   useEffect(() => {
-    const lastLoc = localStorage.getItem('lastMenuLoc')
+    const lastLoc = menu?.locationId ?? localStorage.getItem('lastMenuLoc')
     const link = lastLoc ? `/menus/${merchant?.handle}/${lastLoc}` : '/'
     setBackLink(link)
   }, [])
@@ -71,6 +73,8 @@ export default function CartPage() {
 
     setIsPlacingOrder(true)
 
+    console.log('menuSlug', menuSlug)
+
     const res = await fetch('/api/checkout', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -95,7 +99,9 @@ export default function CartPage() {
       console.error('LocalStorage failed:', err)
     }
 
-    if (data.url === 'demo') {
+    console.log('Cart Page cart items', cartItems, menuSlug, data.url)
+
+    if (location === 'demo') {
       // 🟢 Demo mode — simulate webhook by calling createDemoOrder
       await createDemoOrder({
         referenceId: `${data.ticketNumber}`,
