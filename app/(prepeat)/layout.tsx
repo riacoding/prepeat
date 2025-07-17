@@ -35,9 +35,6 @@ export default async function PrepeatLayout({
       {/* Footer */}
       <footer className='bg-white border-t flex justify-center border-gray-200 text-sm text-gray-600 gap-5'>
         <div> © prepeat.io {year}</div>
-        <Link href='/login'>
-          <p>login</p>
-        </Link>
       </footer>
     </AdminProviders>
   )
