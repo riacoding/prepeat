@@ -1,5 +1,6 @@
 import { type Schema } from '@/amplify/data/resource'
 import { SelectionSet } from 'aws-amplify/data'
+import { Timestamp } from 'next/dist/server/lib/cache-handlers/types'
 
 export type Menu = Schema['Menu']['type']
 export type Order = Schema['Order']['type'] & { rawData: SquareOrder }
@@ -321,4 +322,5 @@ export type DemoOrderInput = {
   locationId: string
   lineItems: CartItem[]
   orderToken: string
+  expiresAt: Timestamp
 }

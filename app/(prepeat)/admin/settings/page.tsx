@@ -42,9 +42,9 @@ export default function Settings({}: Props) {
   if (authStatus !== 'authenticated') return null
 
   return (
-    <div className='flex items-center justify-center'>
-      <div className='md:max-w-xl flex flex-col items-start justify-center space-y-6 bg-orange-50 p-5'>
-        <h1 className='text-xl font-bold'>Settings</h1>
+    <div className='flex flex-col items-center justify-start gap-5'>
+      <h1 className='w-full text-xl font-bold text-center'>Settings</h1>
+      <div className='w-full shadow-sm md:max-w-2xl h-svh flex flex-col items-start justify-start space-y-6 bg-orange-50 p-5'>
         {/* Toggle Images */}
         <div className='flex items-center justify-between gap-4'>
           <label htmlFor='toggleDisplay' className='text-sm font-medium'>
@@ -88,7 +88,7 @@ export default function Settings({}: Props) {
         {/* Logo and ImageUploader */}
         <div className='flex flex-col space-y-4'>
           {merchantLogo ? (
-            <div>
+            <div className='space-y-4'>
               <div className='w-40 h-40'>
                 <label htmlFor='merchantLogo' className='text-sm font-bold'>
                   Current Logo
@@ -100,13 +100,21 @@ export default function Settings({}: Props) {
                   alt='merchant logo'
                 />
               </div>
-              <Button onClick={() => setShowImageUploader(!showImageUploader)} variant='default'>
+              <Button
+                className='bg-prepeat-orange text-white font-medium px-6 py-3 rounded-xl hover:bg-orange-600 transition'
+                onClick={() => setShowImageUploader(!showImageUploader)}
+                variant='default'
+              >
                 {showImageUploader ? 'Cancel' : 'Update Logo'}
               </Button>
             </div>
           ) : (
             <div>
-              <Button onClick={() => setShowImageUploader(true)} variant='default'>
+              <Button
+                className='bg-prepeat-orange text-white font-medium px-6 py-3 rounded-xl hover:bg-orange-600 transition'
+                onClick={() => setShowImageUploader(true)}
+                variant='default'
+              >
                 Upload Logo
               </Button>
             </div>
@@ -132,6 +140,7 @@ export default function Settings({}: Props) {
         {/* Refresh Token Button */}
         <div className='flex flex-col items-start space-y-2  border-gray-300'>
           <Button
+            className='bg-red-500 text-white font-medium px-6 py-3 rounded-xl hover:bg-orange-600 transition'
             variant='default'
             onClick={async () => {
               try {

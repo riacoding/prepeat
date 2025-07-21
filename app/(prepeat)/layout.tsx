@@ -4,6 +4,7 @@ import Link from 'next/link'
 import MobileMenu from '@/components/MobileMenu'
 import HeaderLogo from '@/components/HeaderLogo'
 import AdminProviders from '@/components/AdminProviders'
+import DesktopMenu from '@/components/DesktopMenu'
 
 export const metadata: Metadata = {
   title: 'Prepeat.io',
@@ -25,6 +26,7 @@ export default async function PrepeatLayout({
           <HeaderLogo />
         </Link>
         <div className='flex align-center justify-center mt-5  gap-5'>
+          <DesktopMenu />
           <MobileMenu isLoggedIn={true} />
         </div>
       </header>

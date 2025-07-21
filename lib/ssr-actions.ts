@@ -1027,6 +1027,7 @@ export async function createDemoOrder(order: DemoOrderInput) {
       rawData: JSON.stringify(rawData),
       status: 'OPEN',
       totalMoney: 0,
+      expiresAt: order.expiresAt,
     },
     { authMode }
   )

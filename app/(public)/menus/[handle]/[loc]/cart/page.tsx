@@ -103,6 +103,7 @@ export default function CartPage() {
 
     if (location === 'demo') {
       // 🟢 Demo mode — simulate webhook by calling createDemoOrder
+      const expiresAt = Math.floor((Date.now() + 30 * 60 * 1000) / 1000)
       await createDemoOrder({
         referenceId: `${data.ticketNumber}`,
         orderId: `demo-${crypto.randomUUID()}`,
@@ -110,6 +111,7 @@ export default function CartPage() {
         locationId: locationId!,
         lineItems: cartItems,
         orderToken,
+        expiresAt,
       }),
         router.push(`${process.env.NEXT_PUBLIC_BASE_URL}${backLink}/thankyou?order=${data.ticketNumber}&isDemo=true`)
     } else if (data.url) {

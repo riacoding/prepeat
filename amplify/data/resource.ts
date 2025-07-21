@@ -66,13 +66,10 @@ const schema = a
         totalMoney: a.integer(),
         fulfillmentStatus: a.string(),
         rawData: a.json(),
+        expiresAt: a.timestamp(),
       })
       .secondaryIndexes((index) => [index('referenceId'), index('merchantId')])
-      .authorization((allow) => [
-        allow.guest().to(['read', 'create', 'update']),
-        allow.authenticated().to(['read', 'create', 'update']),
-        allow.groups(['admin', 'vendor']).to(['read', 'create', 'update']),
-      ]),
+      .authorization((allow) => [allow.guest(), allow.groups(['admin', 'vendor']).to(['read', 'create', 'update'])]),
     Order: a
       .model({
         merchantId: a.id().required(),
