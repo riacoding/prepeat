@@ -48,7 +48,6 @@ export function useDemoOrders(merchantId: string, locationId: string, sort: Sort
       authMode: mode,
       filter: {
         locationId: { eq: locationId },
-        fulfillmentStatus: { eq: 'PROPOSED' },
       },
     }).subscribe({
       next: ({ items, isSynced }) => {
