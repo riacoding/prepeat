@@ -23,6 +23,7 @@ interface MockOrderContext {
 
 export function mockSquareOrderFromCart(items: MockCartItem[], context: MockOrderContext) {
   const now = new Date().toISOString()
+  const pickupAt = new Date(Date.now() + 15 * 60 * 1000).toISOString()
 
   const lineItems = items.map((item) => {
     const totalAmount = item.price * item.quantity
@@ -79,7 +80,7 @@ export function mockSquareOrderFromCart(items: MockCartItem[], context: MockOrde
         state: 'PROPOSED',
         pickupDetails: {
           placedAt: now,
-          pickupAt: now,
+          pickupAt: pickupAt,
           acceptedAt: now,
           readyAt: now,
           recipient: {
