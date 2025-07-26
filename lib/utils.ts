@@ -1,11 +1,18 @@
 import { NormalizedItem, ReceiptItem, SquareItem, SquareModifierList } from '@/types'
 import { clsx, type ClassValue } from 'clsx'
+import { format } from 'date-fns'
 import { twMerge } from 'tailwind-merge'
 
 const locationId = process.env.NEXT_PUBLIC_LOCATION_ID
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))
+}
+
+export function formatDateOnly(dateStr: string) {
+  const [year, month, day] = dateStr.split('-').map(Number)
+  const date = new Date(year, month - 1, day) // constructs in local time, no shift
+  return format(date, 'MMMM d, yyyy')
 }
 
 //TODO: normalize the names with the menu names otherwise it will be base name

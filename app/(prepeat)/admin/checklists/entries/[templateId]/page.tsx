@@ -7,6 +7,7 @@ import type { Schema } from '@/amplify/data/resource'
 import { format } from 'date-fns'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
+import { formatDateOnly } from '@/lib/utils'
 
 const client = generateClient<Schema>()
 
@@ -58,7 +59,7 @@ export default function ChecklistEntriesPage() {
                 className='w-full block border p-4 rounded-lg bg-white shadow-sm hover:bg-gray-50 transition'
               >
                 <div>
-                  <p className='font-medium text-lg'>{format(new Date(entry.date), 'MMMM d, yyyy')}</p>
+                  <p className='font-medium text-lg'>{formatDateOnly(entry.date)}</p>
                   <p className='text-sm text-gray-500'>
                     Submitted by: {entry.checkedByName || 'Unknown'} · {entry.checkedItemIds?.length ?? 0} items checked
                   </p>
