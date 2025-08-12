@@ -89,10 +89,10 @@ export default function Settings({}: Props) {
         <div className='flex flex-col space-y-4'>
           {merchantLogo ? (
             <div className='space-y-4'>
+              <label htmlFor='merchantLogo' className='text-sm font-bold'>
+                Current Logo
+              </label>
               <div className='w-40 h-40'>
-                <label htmlFor='merchantLogo' className='text-sm font-bold'>
-                  Current Logo
-                </label>
                 <StorageImage
                   id='merchantLogo'
                   className='w-full h-full object-cover rounded border'
