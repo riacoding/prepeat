@@ -12,7 +12,7 @@ export async function generateMetadata({ params }: { children: React.ReactNode; 
   const merchant = await getPublicMerchantFromHandle(handle)
   const { menu } = await getCachedMenu(loc)
 
-  const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://yourdomain.com'
+  const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://dev.prepeat.io'
   const fullUrl = `${siteUrl}/menus/${handle}/${loc}`
 
   return {
