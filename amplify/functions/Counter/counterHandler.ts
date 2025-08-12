@@ -11,6 +11,7 @@ export const handler = async (event: { arguments: { locationId: string; timeZone
   const today = format(zonedNow, 'yyyyMMdd') // e.g., "20240517"
 
   const counterKey = `order-${locationId}-${today}`
+  console.log('updating counter:', counterKey)
   const tableName = process.env.COUNTER_TABLE
 
   const command = new UpdateItemCommand({
