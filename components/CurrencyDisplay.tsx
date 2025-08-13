@@ -1,15 +1,18 @@
+import { formatCurrencyCents } from '@/lib/moneyFormat'
 import React from 'react'
 
-function CurrencyDisplay({ value }: { value: number | null | undefined }) {
-  if (!value) return
-  // Format as US dollars; adjust locale and currency as needed.
-  const adjusted = value / 100
-  const formattedValue = adjusted.toLocaleString('en-US', {
-    style: 'currency',
-    currency: 'USD',
-  })
+type Props = {
+  /** Amount in cents (e.g., 1850 -> $18.50) */
+  value?: number | null
+  locale?: string
+  currency?: string
+}
 
-  return <span>{formattedValue}</span>
+function CurrencyDisplay({ value, locale = 'en-US', currency = 'USD' }: Props) {
+  if (value === null || value === undefined) return null
+
+  const formatted = formatCurrencyCents(value, locale, currency)
+  return <span>{formatted}</span>
 }
 
 export default CurrencyDisplay

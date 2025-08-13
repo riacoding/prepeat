@@ -16,6 +16,7 @@ import { usePublicMerchant } from '@/components/MerchantPublicContext'
 import { useMenu } from '../MenuProvider'
 import { safeUUID } from '@/lib/utils'
 import { createDemoOrder } from '@/lib/ssr-actions'
+import { calcCartSubtotalCents, calcItemSubtotalCents, calcTaxCents } from '@/lib/money'
 
 const timeZone = 'America/Los_Angeles'
 
@@ -36,6 +37,9 @@ export default function CartPage() {
   const locationId = menu.squareLocationId
 
   const taxRate = merchant?.taxRate ? merchant.taxRate / 100 : 0
+  const cartSubtotal = calcCartSubtotalCents(cartItems)
+  const cartTax = calcTaxCents(cartSubtotal, taxRate)
+  const cartTotal = cartSubtotal + cartTax
 
   console.log('locationId', locationId)
 
@@ -50,15 +54,6 @@ export default function CartPage() {
     const link = lastLoc ? `/menus/${merchant?.handle}/${lastLoc}` : '/'
     setBackLink(link)
   }, [])
-
-  const calculateTotal = () => {
-    return cartItems.reduce((total, item) => total + getItemTotal(item), 0)
-  }
-
-  const getItemTotal = (item: CartItem): number => {
-    const toppingsTotal = item.toppings.reduce((sum, t) => sum + t.price, 0)
-    return (item.price + toppingsTotal) * item.quantity
-  }
 
   const placeOrder = async () => {
     const orderToken = safeUUID()
@@ -175,7 +170,7 @@ export default function CartPage() {
                             )}
                           </div>
                           <p className='font-bold'>
-                            <CurrencyDisplay value={getItemTotal(item)} />
+                            <CurrencyDisplay value={calcItemSubtotalCents(item)} />
                           </p>
                         </div>
                       </div>
@@ -191,22 +186,22 @@ export default function CartPage() {
               <div className='flex justify-between'>
                 <span>Subtotal</span>
                 <span>
-                  <CurrencyDisplay value={calculateTotal()} />
+                  <CurrencyDisplay value={cartSubtotal} />
                 </span>
               </div>
 
               <div className='flex justify-between'>
                 <span>{`Tax ${merchant?.taxRate}%`}</span>
                 <span>
-                  <CurrencyDisplay value={calculateTotal() * taxRate} />
+                  <CurrencyDisplay value={cartTax} />
                 </span>
               </div>
 
               <Separator className='my-2' />
               <div className='flex justify-between font-bold text-lg'>
                 <span>Total</span>
-                <span>
-                  <CurrencyDisplay value={calculateTotal() + calculateTotal() * taxRate} />
+                <span data-testid='cart-total'>
+                  <CurrencyDisplay value={cartTotal} />
                 </span>
               </div>
             </div>
