@@ -10,7 +10,10 @@
     "test:unit": "vitest run --coverage",
     "test:unit:watch": "vitest --watch",
     "test:e2e": "playwright test",
-    "test:e2e:ui": "playwright test--ui"
+    "test:e2e:ui": "playwright test--ui",
+    "seed:e2e": "tsx scripts/seed.e2e.ts",
+    "seed:e2e:clean": "tsx scripts/seed.e2e.ts --clean",
+    "seed:e2e:fresh": "tsx scripts/seed.e2e.ts --preclean"
   },
   "dependencies": {
     "@aws-amplify/adapter-nextjs": "^1.6.0",
@@ -105,7 +108,5 @@
     "typescript": "^5.8.3",
     "vite-tsconfig-paths": "^5.1.4",
     "vitest": "^3.2.4"
-  },
-  "seed:e2e": "tsx scripts/seed.e2e.ts",
-  "seed:e2e:clean": "tsx scripts/seed.e2e.ts --clean"
+  }
 }

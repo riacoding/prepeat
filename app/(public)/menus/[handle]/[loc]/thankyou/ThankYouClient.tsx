@@ -58,7 +58,8 @@ export default function ThankYouClient() {
   }, [])
 
   const handleContactSubmit = async () => {
-    await updateOrderContact(normalizePhoneForStorage(rawPhone), orderNumber)
+    console.log('updating order contact for SMS', orderAccess, rawPhone)
+    await updateOrderContact(normalizePhoneForStorage(rawPhone), orderAccess, Boolean(isDemo))
     setSubmitted(true)
   }
 

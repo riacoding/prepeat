@@ -25,7 +25,8 @@ function normalizeOrders(items: Schema['Order']['type'][], sort: SortOption): Or
   return sorted
 }
 
-export function useDemoOrders(merchantId: string, locationId: string, sort: SortOption) {
+export function useDemoOrders(locationId: string, sort: SortOption) {
+  const merchantId = 'b22babf1-5572-475c-a224-507ec27f7484'
   //console.log('merchant and location', merchantId, locationId)
   const { authStatus } = useSafeAuthenticator()
   const isAuth = authStatus === 'authenticated' ? true : false
@@ -40,7 +41,7 @@ export function useDemoOrders(merchantId: string, locationId: string, sort: Sort
     setMode(isAuth ? 'userPool' : 'identityPool')
   }, [isAuth])
 
-  console.log('authMode', mode)
+  //console.log('authMode', mode)
 
   // Realtime updates
   useEffect(() => {

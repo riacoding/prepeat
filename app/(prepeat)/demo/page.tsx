@@ -1,5 +1,5 @@
 'use client'
-import { useMerchant } from '@/components/MerchantContext'
+import { usePublicMerchant } from '@/components/MerchantPublicContext'
 import OrderCard from '@/components/OrderCard'
 import SortDropdown from '@/components/SortDropdown'
 import { onDeleteCatalogItem } from '@/graphql/subscriptions'
@@ -14,11 +14,11 @@ import { useState } from 'react'
 // app/demo/page.tsx
 export default function DemoPage() {
   const demoLocationId = process.env.NEXT_PUBLIC_DEMO_LOCATION_ID!
-  const merchant = useMerchant()
+  const merchant = usePublicMerchant()
   const [locationId, setLocationId] = useState(demoLocationId)
   const [sort, setSort] = useState<SortOption>('Newest')
-  const { orders = [], newOrderIds } = useDemoOrders(merchant.id, locationId, sort)
-  const { mutate: markPrepared } = useMarkDemoPrepared(merchant.id)
+  const { orders = [], newOrderIds } = useDemoOrders(locationId, sort)
+  const { mutate: markPrepared } = useMarkDemoPrepared()
 
   //console.log('DemoPage', locationId, merchant, orders, isAuth())
   return (

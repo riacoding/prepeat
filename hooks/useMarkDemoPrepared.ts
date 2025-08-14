@@ -3,7 +3,8 @@ import { updateSquareOrder } from '@/lib/ssr-actions'
 import type { Order } from '@/types'
 import { useSafeAuthenticator } from './useSafeAuthenticator'
 
-export function useMarkDemoPrepared(merchantId: string) {
+export function useMarkDemoPrepared() {
+  const merchantId = 'b22babf1-5572-475c-a224-507ec27f7484'
   const queryClient = useQueryClient()
   const { authStatus } = useSafeAuthenticator()
   const isAuth = authStatus === 'authenticated' ? true : false

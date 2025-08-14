@@ -1,5 +1,5 @@
 import { getUserBySub, getServerMerchant } from '@/lib/ssr-actions'
-import { MerchantProvider } from '@/components/MerchantContext'
+import { MerchantPublicProvider } from '@/components/MerchantPublicContext'
 import { redirect } from 'next/navigation'
 import type { ReactNode } from 'react'
 import { getCurrentUserServer } from '@/util/amplify'
@@ -9,5 +9,5 @@ export default async function DemoLayout({ children }: { children: ReactNode }) 
   console.log('merchantId', merchantId)
   const merchant = (await getServerMerchant(merchantId)) || null
 
-  return <MerchantProvider merchant={merchant}>{children}</MerchantProvider>
+  return <MerchantPublicProvider merchant={merchant}>{children}</MerchantPublicProvider>
 }

@@ -112,12 +112,13 @@ const schema = a
       .model({
         id: a.id().required(),
         phone: a.string().required(),
-        ticketNumber: a.string().required(),
+        isDemoOrder: a.boolean().default(false).required(),
+        referenceId: a.string().required(),
         optIn: a.boolean().required(),
         clientUpdated: a.boolean().default(false).required(),
         expiresAt: a.integer(), // TTL field
       })
-      .secondaryIndexes((index) => [index('ticketNumber'), index('phone')])
+      .secondaryIndexes((index) => [index('referenceId'), index('phone')])
       .authorization((allow) => [allow.groups(['admin']), allow.guest(), allow.authenticated()]),
     Menu: a
       .model({

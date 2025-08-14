@@ -239,9 +239,9 @@ export async function updateOrder(orderId: string, eventId: string, merchant_id:
     fulfillmentStatus = order?.fulfillments[0]?.state || 'PROPOSED'
     const phoneNumber = order.fulfillments[0].pickupDetails?.recipient?.phoneNumber
     //create phone
-    await upsertPhoneByTicketNumber({
+    await upsertPhoneByReferenceId({
       phone: phoneNumber,
-      ticketNumber: order.ticketName,
+      referenceId: `${order.locationId}-${order.ticketName}`,
     })
   }
 
@@ -270,9 +270,9 @@ export async function updateOrder(orderId: string, eventId: string, merchant_id:
 
   if (order.ticketName && order.fulfillments && order?.fulfillments[0].state === 'PREPARED') {
     console.log('📞 fetching Phone from Amplify')
-    const { data, errors } = await amplifyClient.models.Phone.listPhoneByTicketNumber(
+    const { data, errors } = await amplifyClient.models.Phone.listPhoneByReferenceId(
       {
-        ticketNumber: order.ticketName,
+        referenceId: `${order.locationId}-${order.ticketName}`,
       },
       { authMode: 'identityPool' }
     )
@@ -313,9 +313,9 @@ async function sendOrderReadyText(phone: string, optIn: boolean, ticket: string)
   console.log(`Text sent to ${phone} for ticket ${ticket}`)
 }
 
-async function upsertPhoneByTicketNumber({ ticketNumber, phone }: { ticketNumber: string; phone: string }) {
-  const { data: existing, errors: fetchErrors } = await amplifyClient.models.Phone.listPhoneByTicketNumber(
-    { ticketNumber },
+async function upsertPhoneByReferenceId({ referenceId, phone }: { referenceId: string; phone: string }) {
+  const { data: existing, errors: fetchErrors } = await amplifyClient.models.Phone.listPhoneByReferenceId(
+    { referenceId },
     { authMode: 'iam' }
   )
 
@@ -337,7 +337,7 @@ async function upsertPhoneByTicketNumber({ ticketNumber, phone }: { ticketNumber
       {
         id: record.id,
         phone,
-        ticketNumber,
+        referenceId,
       },
       { authMode: 'iam' }
     )
@@ -353,9 +353,10 @@ async function upsertPhoneByTicketNumber({ ticketNumber, phone }: { ticketNumber
     const { data, errors: createErrors } = await amplifyClient.models.Phone.create(
       {
         phone,
-        ticketNumber,
+        referenceId,
         optIn: false,
         clientUpdated: false,
+        isDemoOrder: false,
       },
       { authMode: 'iam' }
     )

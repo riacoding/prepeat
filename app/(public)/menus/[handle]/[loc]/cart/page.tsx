@@ -185,7 +185,7 @@ export default function CartPage() {
             <div className='space-y-2 mb-6'>
               <div className='flex justify-between'>
                 <span>Subtotal</span>
-                <span>
+                <span data-testid='cart-subtotal'>
                   <CurrencyDisplay value={cartSubtotal} />
                 </span>
               </div>

@@ -239,14 +239,12 @@ export async function updateSquareOrder(
   }
 }
 
-export async function updateOrderContact(phone: string, ticketNumber: string): Promise<void> {
-  const today = new Date().toISOString().slice(0, 10).replace(/-/g, '') // "20240501"
-  const ticket = `${today}-${ticketNumber}`
-  console.log(`Updating phone ${phone} for ticket ${ticketNumber} ${ticket}`)
+export async function updateOrderContact(phone: string, referenceId: string, isDemo: boolean = false): Promise<void> {
+  console.log(`Updating phone ${phone} for ticket ${referenceId}`)
   const authMode = (await isAuth()) ? 'userPool' : 'iam'
 
-  const { data: phones, errors: phoneErrors } = await cookieBasedClient.models.Phone.listPhoneByTicketNumber(
-    { ticketNumber: ticket },
+  const { data: phones, errors: phoneErrors } = await cookieBasedClient.models.Phone.listPhoneByReferenceId(
+    { referenceId: referenceId },
     { authMode }
   )
 
@@ -257,6 +255,25 @@ export async function updateOrderContact(phone: string, ticketNumber: string): P
 
   if (!phones?.length) {
     console.warn('No matching phone record found')
+    const { data: newPhone, errors: newPhoneErrors } = await cookieBasedClient.models.Phone.create(
+      {
+        phone,
+        referenceId: referenceId,
+        clientUpdated: true,
+        optIn: true,
+        isDemoOrder: isDemo,
+      },
+      { authMode }
+    )
+
+    if (newPhone) {
+      console.log(`📲 New phone ${newPhone.id} created for ticket ${referenceId}`)
+    }
+
+    if (newPhoneErrors?.length) {
+      console.error('Amplify create phone errors:', newPhoneErrors)
+    }
+
     return
   }
 
@@ -272,7 +289,7 @@ export async function updateOrderContact(phone: string, ticketNumber: string): P
     {
       id: existing.id,
       phone,
-      ticketNumber: ticket,
+      referenceId: referenceId,
       clientUpdated: true,
       optIn: true,
     },
