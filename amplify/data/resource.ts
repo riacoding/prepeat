@@ -226,6 +226,7 @@ const schema = a
     allow.resource(webhookProcessor),
     allow.resource(twilioInbound),
     allow.resource(postConfirmation),
+    allow.resource(demoNotifyPhone),
   ])
 
 export type Schema = ClientSchema<typeof schema>
