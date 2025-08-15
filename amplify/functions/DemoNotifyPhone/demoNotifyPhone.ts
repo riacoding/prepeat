@@ -8,7 +8,13 @@ const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_
 const TWILIO_FROM = process.env.TWILIO_FROM! // your Twilio number or messaging service SID
 
 export const handler: Schema['demoNotifyPhone']['functionHandler'] = async (event) => {
-  const { phone, referenceId } = event.arguments
+  const { phone: raw, referenceId } = event.arguments
+
+  const phone = raw.trim().startsWith('+') ? raw : `+${raw.replace(/\D/g, '')}`
+
+  // --- Log only the last 4 digits (never the full number)
+  const last4 = phone.replace(/\D/g, '').slice(-4) || '????'
+  console.info(JSON.stringify({ referenceId: referenceId, event: 'demoNotifyPhone', last4, stage: 'received' }))
 
   if (!E164.test(phone)) {
     return
