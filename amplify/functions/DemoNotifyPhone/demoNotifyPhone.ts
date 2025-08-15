@@ -21,9 +21,11 @@ export const handler: Schema['demoNotifyPhone']['functionHandler'] = async (even
 
   const last4 = phone.replace(/\D/g, '').slice(-4) || '????'
   console.info(JSON.stringify({ referenceId, event: 'demoNotifyPhone', last4, stage: 'received' }))
+  putMetric('received')
 
   if (!E164.test(phone)) {
     console.warn(JSON.stringify({ referenceId, event: 'demoNotifyPhone', stage: 'invalid_phone', last4 }))
+    putMetric('invalid_phone')
     return // void
   }
 
@@ -51,6 +53,7 @@ export const handler: Schema['demoNotifyPhone']['functionHandler'] = async (even
   } catch (err: any) {
     if (err?.name === 'ConditionalCheckFailedException') {
       console.info(JSON.stringify({ referenceId, event: 'demoNotifyPhone', stage: 'rate_limited', last4 }))
+      putMetric('rate_limited')
       return
     }
     console.error(
@@ -82,6 +85,7 @@ export const handler: Schema['demoNotifyPhone']['functionHandler'] = async (even
     const res = await twilioClient.messages.create(msgParams)
     const sidTail = res.sid?.slice(-6) ?? ''
     console.info(JSON.stringify({ referenceId, event: 'demoNotifyPhone', stage: 'sent', last4, sidTail }))
+    putMetric('sent')
   } catch (err: any) {
     // Grab Twilio fields if present
     const twilioCode = err?.code
@@ -99,7 +103,30 @@ export const handler: Schema['demoNotifyPhone']['functionHandler'] = async (even
         moreInfo,
       })
     )
+    putMetric('notify_failed')
   }
 
   return // still void; accepted/reason
+}
+
+// Tiny EMF helper
+function putMetric(stage: 'received' | 'invalid_phone' | 'rate_limited' | 'sent' | 'notify_failed', count = 1) {
+  console.log(
+    JSON.stringify({
+      _aws: {
+        Timestamp: Date.now(),
+        CloudWatchMetrics: [
+          {
+            Namespace: 'Prepeat/DemoNotify', // <— your custom namespace
+            Dimensions: [['stage']], // one dimension: stage
+            Metrics: [{ Name: 'Count', Unit: 'Count' }],
+            // Optional high-res (1-second): add StorageResolution: 1 to the metric object
+            // Metrics: [{ Name: 'Count', Unit: 'Count', StorageResolution: 1 }],
+          },
+        ],
+      },
+      stage, // dimension value
+      Count: count,
+    })
+  )
 }
