@@ -163,23 +163,23 @@ export const getCurrentMenu = async (locationId: string): Promise<Menu | null> =
 }
 
 export async function updateSquareOrder(
-  referenceId: string,
+  orderId: string,
   locationId: string,
   newState: FulfillmentState,
   merchantId: string
 ) {
-  console.log(`Updating order ${referenceId} at Location:${locationId} to ${newState.state}`)
+  console.log(`Updating order ${orderId} at Location:${locationId} to ${newState.state}`)
   const authMode = (await isAuth()) ? 'userPool' : 'identityPool'
 
   // 🛑 Detect and handle demo orders
-  if (referenceId.startsWith('demo-')) {
-    console.log(`[updateSquareOrder] Skipping Square update — demo order ${referenceId}`)
+  if (orderId.startsWith('demo-')) {
+    console.log(`[updateSquareOrder] Skipping Square update — demo order ${orderId}`)
 
     // Fetch the Amplify order by ID
-    const amplifyOrder = await getAmplifyDemoOrderById(referenceId)
+    const amplifyOrder = await getAmplifyDemoOrderById(orderId)
 
     if (!amplifyOrder?.rawData) {
-      console.warn(`[updateSquareOrder] Demo order ${referenceId} missing rawData`)
+      console.warn(`[updateSquareOrder] Demo order ${orderId} missing rawData`)
       return
     }
 
@@ -201,7 +201,7 @@ export async function updateSquareOrder(
 
     // Check if check phone exists for demo order and notify
     const { data: phones, errors: phoneErrors } = await cookieBasedClient.models.Phone.listPhoneByReferenceId(
-      { referenceId: referenceId },
+      { referenceId: amplifyOrder.referenceId ?? '' },
       { authMode }
     )
 
@@ -211,11 +211,11 @@ export async function updateSquareOrder(
     }
 
     if (!phones?.length) {
-      console.warn(`No matching phone record found for demo order ${referenceId}`)
+      console.warn(`No matching phone record found for demo order ${orderId}`)
       return
     }
 
-    await cookieBasedClient.mutations.demoNotifyPhone({ phone: phones[0].phone, referenceId })
+    await cookieBasedClient.mutations.demoNotifyPhone({ phone: phones[0].phone, referenceId: orderId })
 
     return
   }
@@ -227,7 +227,7 @@ export async function updateSquareOrder(
 
   try {
     // Step 1: Fetch existing order
-    const { order } = await client.orders.get({ orderId: referenceId })
+    const { order } = await client.orders.get({ orderId: orderId })
 
     if (!order || !order.fulfillments || order.fulfillments.length !== 1) {
       throw new Error(`Unexpected fulfillment state: ${JSON.stringify(order?.fulfillments)}`)
@@ -240,7 +240,7 @@ export async function updateSquareOrder(
 
     // Step 3: Send the full fulfillment object back in the update
     const { order: newOrder } = await client.orders.update({
-      orderId: referenceId,
+      orderId: orderId,
       idempotencyKey: randomUUID(),
       order: {
         version: order.version!,
@@ -249,7 +249,7 @@ export async function updateSquareOrder(
       },
     })
 
-    console.log(`Square Order ${referenceId} successfully updated.`)
+    console.log(`Square Order ${orderId} successfully updated.`)
     if (!newOrder?.id) {
       throw new Error('Updated Square order has no ID')
     }
