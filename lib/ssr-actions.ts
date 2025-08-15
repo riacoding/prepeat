@@ -215,10 +215,13 @@ export async function updateSquareOrder(
       return
     }
 
-    await cookieBasedClient.mutations.demoNotifyPhone({
-      phone: phones[0].phone,
-      referenceId: amplifyOrder.referenceId!,
-    })
+    await cookieBasedClient.mutations.demoNotifyPhone(
+      {
+        phone: phones[0].phone,
+        referenceId: amplifyOrder.referenceId!,
+      },
+      { authMode }
+    )
 
     return
   }
