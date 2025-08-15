@@ -12,10 +12,12 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam'
 import { HttpIamAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers'
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations'
 import { CorsHttpMethod, HttpApi, HttpMethod, PayloadFormatVersion } from 'aws-cdk-lib/aws-apigatewayv2'
-import { Stack } from 'aws-cdk-lib'
+import { RemovalPolicy, Stack } from 'aws-cdk-lib'
 import { SquareWebhookStack } from './custom/webhookqueue/resource'
 import { squareAuth } from './functions/getSquareAuth/resource'
+import { demoNotifyPhone } from './functions/DemoNotifyPhone/resource'
 import branchName from 'current-git-branch'
+import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb'
 
 config({ path: '.env.local', override: false })
 
@@ -30,10 +32,12 @@ const backend = defineBackend({
   webhookProcessor,
   twilioInbound,
   squareAuth,
+  demoNotifyPhone,
 })
 const environment = process.env.ENVIRONMENT ?? 'dev'
 const ordersTable = backend.data.resources.tables['Order']
 const { cfnResources } = backend.data.resources
+const demoNotifyPhoneLambda = backend.demoNotifyPhone
 
 cfnResources.amplifyDynamoDbTables['DemoOrder'].timeToLiveAttribute = {
   attributeName: 'expiresAt',
@@ -46,6 +50,20 @@ const APP_BASE_URL =
     : currentBranch === 'main'
       ? 'https://main.dgs4gp483bprx.amplifyapp.com/'
       : 'http://localhost:3000'
+
+// standalone table just for quotas (pk=phoneHash, sk=YYYY-MM-DD)
+const rateStack = backend.createStack('DemoNotifyRateLimit')
+const quotaTable = new Table(rateStack, 'DemoNotifyQuota', {
+  partitionKey: { name: 'pk', type: AttributeType.STRING },
+  sortKey: { name: 'sk', type: AttributeType.STRING },
+  billingMode: BillingMode.PAY_PER_REQUEST,
+  timeToLiveAttribute: 'ttl', // auto-expire day buckets
+  removalPolicy: RemovalPolicy.DESTROY, // dev only; switch to RETAIN in prod
+})
+
+// inject table name + grant R/W to the function
+demoNotifyPhoneLambda.addEnvironment('QUOTA_TABLE_NAME', quotaTable.tableName)
+quotaTable.grantReadWriteData(demoNotifyPhoneLambda.resources.lambda)
 
 const squareWebhook = new SquareWebhookStack(backend.data.stack, 'SquareWebHookStack', {
   squareProcessorLambda: backend.webhookProcessor.resources.lambda,
