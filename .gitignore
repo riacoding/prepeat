@@ -35,3 +35,8 @@ amplifyconfiguration*
 .DS_Store
 env.json
 scratch.txt
+
+
+coverage/
+playwright-report/
+*.lcov
