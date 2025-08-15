@@ -20,7 +20,8 @@ export const handler: Schema['demoNotifyPhone']['functionHandler'] = async (even
     return
   }
 
-  const message = `🎉 Your demo order #${referenceId} is ready! Pick it up now.`
+  const orderNumber = referenceId.split('-')[1]
+  const message = `🎉 Your demo order #${orderNumber} is ready! Pick it up now.`
 
   await twilioClient.messages.create({
     to: phone,
