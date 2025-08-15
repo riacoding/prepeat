@@ -211,11 +211,14 @@ export async function updateSquareOrder(
     }
 
     if (!phones?.length) {
-      console.warn(`No matching phone record found for demo order ${orderId}`)
+      console.warn(`No matching phone record found for demo order ${amplifyOrder.referenceId}`)
       return
     }
 
-    await cookieBasedClient.mutations.demoNotifyPhone({ phone: phones[0].phone, referenceId: orderId })
+    await cookieBasedClient.mutations.demoNotifyPhone({
+      phone: phones[0].phone,
+      referenceId: amplifyOrder.referenceId!,
+    })
 
     return
   }
