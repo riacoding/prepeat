@@ -64,6 +64,7 @@ import { SquareClient, SquareEnvironment } from 'square'
 import { randomUUID } from 'crypto'
 import { sanitizeBigInts } from '@/amplify/functions/webhookProcessor/util'
 import { mockSquareOrderFromCart } from './mockSquareOrderFromCart'
+import { aws_fis } from 'aws-cdk-lib'
 
 const SQUARE_BASE_URL = 'https://connect.squareupsandbox.com/v2'
 const SQUARE_TOKEN = process.env.SQUARE_ACCESS_TOKEN
@@ -162,22 +163,23 @@ export const getCurrentMenu = async (locationId: string): Promise<Menu | null> =
 }
 
 export async function updateSquareOrder(
-  orderId: string,
+  referenceId: string,
   locationId: string,
   newState: FulfillmentState,
   merchantId: string
 ) {
-  console.log(`Updating order ${orderId} at Location:${locationId} to ${newState.state}`)
+  console.log(`Updating order ${referenceId} at Location:${locationId} to ${newState.state}`)
+  const authMode = (await isAuth()) ? 'userPool' : 'identityPool'
 
   // 🛑 Detect and handle demo orders
-  if (orderId.startsWith('demo-')) {
-    console.log(`[updateSquareOrder] Skipping Square update — demo order ${orderId}`)
+  if (referenceId.startsWith('demo-')) {
+    console.log(`[updateSquareOrder] Skipping Square update — demo order ${referenceId}`)
 
     // Fetch the Amplify order by ID
-    const amplifyOrder = await getAmplifyDemoOrderById(orderId)
+    const amplifyOrder = await getAmplifyDemoOrderById(referenceId)
 
     if (!amplifyOrder?.rawData) {
-      console.warn(`[updateSquareOrder] Demo order ${orderId} missing rawData`)
+      console.warn(`[updateSquareOrder] Demo order ${referenceId} missing rawData`)
       return
     }
 
@@ -185,7 +187,7 @@ export async function updateSquareOrder(
     const rawData: SquareOrder =
       typeof amplifyOrder.rawData === 'string' ? JSON.parse(amplifyOrder.rawData) : amplifyOrder.rawData
 
-    // Safely clone and update fulfillments
+    // Safely clone and update fulfillments in Order rawData
     const updatedRawData: SquareOrder = {
       ...rawData,
       fulfillments: (rawData.fulfillments || []).map((f) => ({
@@ -196,6 +198,25 @@ export async function updateSquareOrder(
 
     // Write it back into Amplify
     await updateAmplifyDemoOrder(updatedRawData, newState)
+
+    // Check if check phone exists for demo order and notify
+    const { data: phones, errors: phoneErrors } = await cookieBasedClient.models.Phone.listPhoneByReferenceId(
+      { referenceId: referenceId },
+      { authMode }
+    )
+
+    if (phoneErrors?.length) {
+      console.error('Amplify fetch phone errors:', phoneErrors)
+      return
+    }
+
+    if (!phones?.length) {
+      console.warn(`No matching phone record found for demo order ${referenceId}`)
+      return
+    }
+
+    await cookieBasedClient.mutations.demoNotifyPhone({ phone: phones[0].phone, referenceId })
+
     return
   }
 
@@ -206,7 +227,7 @@ export async function updateSquareOrder(
 
   try {
     // Step 1: Fetch existing order
-    const { order } = await client.orders.get({ orderId })
+    const { order } = await client.orders.get({ orderId: referenceId })
 
     if (!order || !order.fulfillments || order.fulfillments.length !== 1) {
       throw new Error(`Unexpected fulfillment state: ${JSON.stringify(order?.fulfillments)}`)
@@ -219,7 +240,7 @@ export async function updateSquareOrder(
 
     // Step 3: Send the full fulfillment object back in the update
     const { order: newOrder } = await client.orders.update({
-      orderId,
+      orderId: referenceId,
       idempotencyKey: randomUUID(),
       order: {
         version: order.version!,
@@ -228,7 +249,7 @@ export async function updateSquareOrder(
       },
     })
 
-    console.log(`Square Order ${orderId} successfully updated.`)
+    console.log(`Square Order ${referenceId} successfully updated.`)
     if (!newOrder?.id) {
       throw new Error('Updated Square order has no ID')
     }

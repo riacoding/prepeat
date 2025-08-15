@@ -4,6 +4,7 @@ import { squareAuth } from '../functions/getSquareAuth/resource'
 import { webhookProcessor } from '../functions/webhookProcessor/resource'
 import { postConfirmation } from '../auth/postConfirmation/resource'
 import { twilioInbound } from '../functions/twilioInbound/resource'
+import { demoNotifyPhone } from '../functions/DemoNotifyPhone/resource'
 
 const schema = a
   .schema({
@@ -213,7 +214,13 @@ const schema = a
       .returns(a.ref('TicketResponse'))
       .authorization((allow) => [allow.guest(), allow.authenticated()])
       .handler(a.handler.function(counter)),
+    demoNotifyPhone: a
+      .mutation()
+      .arguments({ phone: a.string().required(), referenceId: a.string().required() })
+      .authorization((allow) => [allow.guest(), allow.authenticated()])
+      .handler(a.handler.function(demoNotifyPhone).async()),
   })
+
   .authorization((allow) => [
     allow.resource(counter),
     allow.resource(webhookProcessor),
