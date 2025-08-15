@@ -6,11 +6,13 @@ import { Button } from '@/components/ui/button'
 import { getAuthUrl } from '@/lib/ssr-actions'
 import Link from 'next/link'
 import { PublicMerchant } from '@/types'
+import { useMerchant } from './MerchantContext'
 
-export default function LinkAccount({ merchant }: { merchant: PublicMerchant }) {
+export default function LinkAccount() {
   const [url, setUrl] = useState<string | null>(null)
   const [auth, setAuth] = useState<string | null>(null)
   const [isConfiguring, setIsConfiguring] = useState(true)
+  const merchant = useMerchant()
 
   useEffect(() => {
     async function getUrl() {
