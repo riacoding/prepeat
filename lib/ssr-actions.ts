@@ -205,6 +205,8 @@ export async function updateSquareOrder(
       { authMode }
     )
 
+    console.log('debug:', phones)
+
     if (phoneErrors?.length) {
       console.error('Amplify fetch phone errors:', phoneErrors)
       return
@@ -215,7 +217,7 @@ export async function updateSquareOrder(
       return
     }
 
-    await cookieBasedClient.mutations.demoNotifyPhone(
+    cookieBasedClient.mutations.demoNotifyPhone(
       {
         phone: phones[0].phone,
         referenceId: amplifyOrder.referenceId!,
