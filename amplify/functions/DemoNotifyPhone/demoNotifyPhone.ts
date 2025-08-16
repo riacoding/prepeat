@@ -42,10 +42,18 @@ export const handler: Schema['demoNotifyPhone']['functionHandler'] = async (even
         new UpdateCommand({
           TableName: env.QUOTA_TABLE_NAME!,
           Key: { pk, sk },
-          UpdateExpression: 'SET #c = if_not_exists(#c, :z) + :one, ttl = :ttl',
+          UpdateExpression: 'SET #c = if_not_exists(#c, :z) + :one, #ttl = :ttl',
           ConditionExpression: 'attribute_not_exists(#c) OR #c < :limit',
-          ExpressionAttributeNames: { '#c': 'count' },
-          ExpressionAttributeValues: { ':z': 0, ':one': 1, ':limit': 3, ':ttl': ttl },
+          ExpressionAttributeNames: {
+            '#c': 'count',
+            '#ttl': 'ttl', // <-- alias the TTL attribute
+          },
+          ExpressionAttributeValues: {
+            ':z': 0,
+            ':one': 1,
+            ':limit': 3,
+            ':ttl': ttl, // number (epoch seconds)
+          },
           ReturnValues: 'UPDATED_NEW',
         })
       )
