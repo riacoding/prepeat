@@ -15,7 +15,7 @@ const TWILIO_FROM = process.env.TWILIO_FROM! // E.164 number OR MGxxxxxxxx SID
 
 export const handler: Schema['demoNotifyPhone']['functionHandler'] = async (event) => {
   const { phone: raw, referenceId } = event.arguments
-  console.log('env vars:', process.env)
+  console.log('env vars:', process.env, env.AWS_EXECUTION_ENV)
 
   const cleaned = (raw ?? '').trim()
   const phone = cleaned.startsWith('+') ? cleaned : `+${cleaned.replace(/\D/g, '')}`
