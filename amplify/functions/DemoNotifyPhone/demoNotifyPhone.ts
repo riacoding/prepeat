@@ -4,7 +4,7 @@ import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, UpdateCommand } from '@aws-sdk/lib-dynamodb'
 import twilio from 'twilio'
 import type { Schema } from '../../data/resource'
-import { env } from '$amplify/env/demoNotifyPhone'
+import { env as fnEnv } from '$amplify/env/demoNotifyPhone'
 
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}))
 const E164 = /^\+?[1-9]\d{1,14}$/
@@ -15,18 +15,19 @@ const TWILIO_FROM = process.env.TWILIO_FROM! // E.164 number OR MGxxxxxxxx SID
 
 export const handler: Schema['demoNotifyPhone']['functionHandler'] = async (event) => {
   const { phone: raw, referenceId } = event.arguments
-  console.log('env vars:', process.env, env.AWS_EXECUTION_ENV)
+  console.log('env:', fnEnv.ENV)
+  const mEnv = fnEnv.ENV ?? 'unknown'
 
   const cleaned = (raw ?? '').trim()
   const phone = cleaned.startsWith('+') ? cleaned : `+${cleaned.replace(/\D/g, '')}`
 
   const last4 = phone.replace(/\D/g, '').slice(-4) || '????'
   console.info(JSON.stringify({ referenceId, event: 'demoNotifyPhone', last4, stage: 'received' }))
-  putMetric('received')
+  putMetric('received', mEnv)
 
   if (!E164.test(phone)) {
     console.warn(JSON.stringify({ referenceId, event: 'demoNotifyPhone', stage: 'invalid_phone', last4 }))
-    putMetric('invalid_phone')
+    putMetric('invalid_phone', mEnv)
     return // void
   }
 
@@ -36,12 +37,12 @@ export const handler: Schema['demoNotifyPhone']['functionHandler'] = async (even
   const ttl = Math.floor(Date.now() / 1000) + 27 * 60 * 60
 
   try {
-    if (!env.QUOTA_TABLE_NAME) {
+    if (!fnEnv.QUOTA_TABLE_NAME) {
       console.warn(JSON.stringify({ referenceId, event: 'demoNotifyPhone', stage: 'no_quota_table', last4 }))
     } else {
       await ddb.send(
         new UpdateCommand({
-          TableName: env.QUOTA_TABLE_NAME!,
+          TableName: fnEnv.QUOTA_TABLE_NAME!,
           Key: { pk, sk },
           UpdateExpression: 'SET #c = if_not_exists(#c, :z) + :one, #ttl = :ttl',
           ConditionExpression: 'attribute_not_exists(#c) OR #c < :limit',
@@ -62,7 +63,7 @@ export const handler: Schema['demoNotifyPhone']['functionHandler'] = async (even
   } catch (err: any) {
     if (err?.name === 'ConditionalCheckFailedException') {
       console.info(JSON.stringify({ referenceId, event: 'demoNotifyPhone', stage: 'rate_limited', last4 }))
-      putMetric('rate_limited')
+      putMetric('rate_limited', mEnv)
       return
     }
     console.error(
@@ -94,7 +95,7 @@ export const handler: Schema['demoNotifyPhone']['functionHandler'] = async (even
     const res = await twilioClient.messages.create(msgParams)
     const sidTail = res.sid?.slice(-6) ?? ''
     console.info(JSON.stringify({ referenceId, event: 'demoNotifyPhone', stage: 'sent', last4, sidTail }))
-    putMetric('sent')
+    putMetric('sent', mEnv)
   } catch (err: any) {
     // Grab Twilio fields if present
     const twilioCode = err?.code
@@ -112,14 +113,16 @@ export const handler: Schema['demoNotifyPhone']['functionHandler'] = async (even
         moreInfo,
       })
     )
-    putMetric('notify_failed')
+    putMetric('notify_failed', mEnv)
   }
 
   return // still void; accepted/reason
 }
 
+type Stage = 'received' | 'invalid_phone' | 'rate_limited' | 'sent' | 'notify_failed'
+
 // Tiny EMF helper
-function putMetric(stage: 'received' | 'invalid_phone' | 'rate_limited' | 'sent' | 'notify_failed', count = 1) {
+function putMetric(stage: Stage, envName: string, count = 1) {
   console.log(
     JSON.stringify({
       _aws: {
@@ -127,7 +130,7 @@ function putMetric(stage: 'received' | 'invalid_phone' | 'rate_limited' | 'sent'
         CloudWatchMetrics: [
           {
             Namespace: 'Prepeat/DemoNotify', // <— your custom namespace
-            Dimensions: [['stage']], // one dimension: stage
+            Dimensions: [['stage', 'env']], // one dimension: stage
             Metrics: [{ Name: 'Count', Unit: 'Count' }],
             // Optional high-res (1-second): add StorageResolution: 1 to the metric object
             // Metrics: [{ Name: 'Count', Unit: 'Count', StorageResolution: 1 }],

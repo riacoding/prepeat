@@ -21,7 +21,17 @@ import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb'
 
 config({ path: '.env.local', override: false })
 
-const currentBranch = process.env.ENVIRONMENT === 'sandbox' ? 'sandbox' : branchName() || process.env.AWS_BRANCH
+function resolveBranch(): string {
+  const b = branchName() // string | false
+  if (typeof b === 'string' && b) return b
+  return process.env.AMPLIFY_BRANCH ?? process.env.AWS_BRANCH ?? 'local'
+}
+
+// Try git branch first (local/dev), then CI env vars (Amplify Console)
+const BRANCH = resolveBranch()
+
+// Map branch → env label (tweak to your names)
+const ENV_NAME = BRANCH === 'main' || BRANCH === 'prod' ? 'prod' : BRANCH === 'prepeat-dev' ? 'dev' : BRANCH // fallback: use branch as-is
 
 const backend = defineBackend({
   auth,
@@ -45,9 +55,9 @@ cfnResources.amplifyDynamoDbTables['DemoOrder'].timeToLiveAttribute = {
 }
 
 const APP_BASE_URL =
-  currentBranch === 'prepeat-dev'
+  ENV_NAME === 'dev'
     ? 'https://prepeat-dev.dgs4gp483bprx.amplifyapp.com'
-    : currentBranch === 'main'
+    : ENV_NAME === 'prod'
       ? 'https://main.dgs4gp483bprx.amplifyapp.com/'
       : 'http://localhost:3000'
 
@@ -63,6 +73,7 @@ const quotaTable = new Table(rateStack, 'DemoNotifyQuota', {
 
 // inject table name + grant R/W to the function
 demoNotifyPhoneLambda.addEnvironment('QUOTA_TABLE_NAME', quotaTable.tableName)
+demoNotifyPhoneLambda.addEnvironment('ENV', ENV_NAME)
 quotaTable.grantReadWriteData(demoNotifyPhoneLambda.resources.lambda)
 
 const squareWebhook = new SquareWebhookStack(backend.data.stack, 'SquareWebHookStack', {
