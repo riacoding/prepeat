@@ -132,23 +132,24 @@ type Stage = 'received' | 'invalid_phone' | 'rate_limited' | 'sent' | 'notify_fa
 
 // Tiny EMF helper
 function putMetric(stage: Stage, envName: string, count = 1) {
-  console.log(
-    JSON.stringify({
-      _aws: {
-        Timestamp: Date.now(),
-        CloudWatchMetrics: [
-          {
-            Namespace: 'Prepeat/DemoNotify', // <— your custom namespace
-            Dimensions: [['stage', 'envName'], ['stage']], // one dimension: stage
-            Metrics: [{ Name: 'Count', Unit: 'Count' }],
-            // Optional high-res (1-second): add StorageResolution: 1 to the metric object
-            // Metrics: [{ Name: 'Count', Unit: 'Count', StorageResolution: 1 }],
-          },
-        ],
-      },
-      stage, // dimension value
-      envName,
-      Count: count,
-    })
-  )
+  const env = (envName ?? 'unknown') + '' // force string
+
+  const payload = {
+    _aws: {
+      Timestamp: Date.now(),
+      CloudWatchMetrics: [
+        {
+          Namespace: 'Prepeat/DemoNotify', // <— your custom namespace
+          Dimensions: [['stage', 'envName'], ['stage']], // one dimension: stage
+          Metrics: [{ Name: 'Count', Unit: 'Count' }],
+          // Optional high-res (1-second): add StorageResolution: 1 to the metric object
+          // Metrics: [{ Name: 'Count', Unit: 'Count', StorageResolution: 1 }],
+        },
+      ],
+    },
+    stage, // dimension value
+    env,
+    Count: count,
+  }
+  console.log(JSON.stringify(payload))
 }
