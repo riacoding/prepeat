@@ -36,6 +36,15 @@ export const handler: Schema['demoNotifyPhone']['functionHandler'] = async (even
   const sk = utcDay()
   const ttl = Math.floor(Date.now() / 1000) + 27 * 60 * 60
 
+  //next UTC midnight + 3h
+  //   function ttlNextUtcDay(bufferHours = 3) {
+  //   const now = new Date();
+  //   const next = new Date(Date.UTC(
+  //     now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate() + 1, bufferHours, 0, 0
+  //   ));
+  //   return Math.floor(next.getTime() / 1000);
+  // }
+
   try {
     if (!fnEnv.QUOTA_TABLE_NAME) {
       console.warn(JSON.stringify({ referenceId, event: 'demoNotifyPhone', stage: 'no_quota_table', last4 }))
