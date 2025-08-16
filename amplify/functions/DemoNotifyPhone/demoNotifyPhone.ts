@@ -71,7 +71,7 @@ export const handler: Schema['demoNotifyPhone']['functionHandler'] = async (even
   }
 
   // Build message safely
-  const orderNumber = (referenceId ?? '').split('-')[1] ?? referenceId ?? '???'
+  const orderNumber = (referenceId ?? '').split('-')[2] ?? referenceId ?? '???'
   const message = ` Your demo order #${orderNumber} is ready! Pick it up now.`
 
   // Twilio types to avoid `any`
