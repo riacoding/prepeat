@@ -139,7 +139,7 @@ function putMetric(stage: Stage, envName: string, count = 1) {
         CloudWatchMetrics: [
           {
             Namespace: 'Prepeat/DemoNotify', // <— your custom namespace
-            Dimensions: [['stage', 'env']], // one dimension: stage
+            Dimensions: [['stage', 'envName'], ['stage']], // one dimension: stage
             Metrics: [{ Name: 'Count', Unit: 'Count' }],
             // Optional high-res (1-second): add StorageResolution: 1 to the metric object
             // Metrics: [{ Name: 'Count', Unit: 'Count', StorageResolution: 1 }],
@@ -147,6 +147,7 @@ function putMetric(stage: Stage, envName: string, count = 1) {
         ],
       },
       stage, // dimension value
+      envName,
       Count: count,
     })
   )
