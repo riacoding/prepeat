@@ -1123,6 +1123,7 @@ async function getAmplifyOrderById(orderId: string) {
 }
 
 export async function subscribeEmailAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const authMode = (await isAuth()) ? 'userPool' : 'identityPool'
   const emailRaw = String(formData.get('email') ?? '').trim()
   const placement = String(formData.get('placement') ?? 'homepage_hero')
   const url = String(formData.get('url') ?? '')
@@ -1146,28 +1147,31 @@ export async function subscribeEmailAction(_prevState: ActionState, formData: Fo
   const userAgent = hdrs.get('user-agent') ?? undefined
 
   try {
-    await cookieBasedClient.models.Subscriber.create({
-      id: emailLower,
-      email: emailLower,
-      status: 'subscribed', // enum default applied here
-      optInType: 'single',
-      consent: {
-        method: 'webform',
-        timestamp: now,
-        policyVersion: 'v1',
-        text: 'By subscribing, you agree to receive emails from Prepeat. Unsubscribe anytime.',
+    await cookieBasedClient.models.Subscriber.create(
+      {
+        id: emailLower,
+        email: emailLower,
+        status: 'subscribed', // enum default applied here
+        optInType: 'single',
+        consent: {
+          method: 'webform',
+          timestamp: now,
+          policyVersion: 'v1',
+          text: 'By subscribing, you agree to receive emails from Prepeat. Unsubscribe anytime.',
+        },
+        source: {
+          placement: placement as any, // "homepage_hero" | "footer" | "modal"
+          url,
+          utm: { source: utm_source, medium: utm_medium, campaign: utm_campaign },
+        },
+        tags: [placement],
+        metadata: userAgent ? { userAgent } : {},
+        export: { status: 'pending', provider: 'mailchimp', emailHash },
+        createdAt: now,
+        updatedAt: now,
       },
-      source: {
-        placement: placement as any, // "homepage_hero" | "footer" | "modal"
-        url,
-        utm: { source: utm_source, medium: utm_medium, campaign: utm_campaign },
-      },
-      tags: [placement],
-      metadata: userAgent ? { userAgent } : {},
-      export: { status: 'pending', provider: 'mailchimp', emailHash },
-      createdAt: now,
-      updatedAt: now,
-    })
+      { authMode }
+    )
 
     return { ok: true, message: 'You’re on the list. Thanks!' }
   } catch (err: any) {
