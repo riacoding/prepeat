@@ -1,7 +1,7 @@
 import { NormalizedItem, ReceiptItem, SquareItem, SquareModifierList } from '@/types'
 import { clsx, type ClassValue } from 'clsx'
 import { format } from 'date-fns'
-import { createHash } from 'node:crypto'
+import { createHash } from 'crypto'
 import { twMerge } from 'tailwind-merge'
 
 const locationId = process.env.NEXT_PUBLIC_LOCATION_ID
