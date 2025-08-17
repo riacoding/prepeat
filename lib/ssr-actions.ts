@@ -1147,7 +1147,7 @@ export async function subscribeEmailAction(_prevState: ActionState, formData: Fo
   const userAgent = hdrs.get('user-agent') ?? undefined
 
   try {
-    await cookieBasedClient.models.Subscriber.create(
+    const { data, errors } = await cookieBasedClient.models.Subscriber.create(
       {
         id: emailLower,
         email: emailLower,
@@ -1172,7 +1172,7 @@ export async function subscribeEmailAction(_prevState: ActionState, formData: Fo
       },
       { authMode }
     )
-
+    console.log('subscriber:', data)
     return { ok: true, message: 'You’re on the list. Thanks!' }
   } catch (err: any) {
     const msg = String(err?.errors?.[0]?.message ?? err?.message ?? '')
