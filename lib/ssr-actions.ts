@@ -61,7 +61,7 @@ import {
 } from '@/types'
 import { extractReceiptItems, orderNumberToTicket } from './utils'
 import { SquareClient, SquareEnvironment } from 'square'
-import { randomUUID } from 'crypto'
+import { randomUUID, createHash } from 'crypto'
 import { sanitizeBigInts } from '@/amplify/functions/webhookProcessor/util'
 import { mockSquareOrderFromCart } from './mockSquareOrderFromCart'
 import { aws_fis } from 'aws-cdk-lib'
@@ -1121,4 +1121,54 @@ async function getAmplifyOrderById(orderId: string) {
   }
 
   return data
+}
+
+export async function subscribeEmail(input: {
+  email: string
+  placement: 'homepage_hero' | 'footer' | 'modal'
+  url?: string
+  utm?: { source?: string; medium?: string; campaign?: string; term?: string; content?: string }
+  policyVersion?: string
+  consentText?: string
+  optInType?: 'single' | 'double'
+}) {
+  const authMode = (await isAuth()) ? 'userPool' : 'identityPool'
+  const emailLower = input.email.trim().toLowerCase()
+  const emailHash = createHash('md5').update(emailLower).digest('hex')
+  const now = new Date().toISOString()
+
+  // App-level defaults (since enum fields can’t use .default)
+  const status: Schema['Subscriber']['type']['status'] = 'subscribed'
+  const optInType: Schema['Subscriber']['type']['optInType'] = input.optInType ?? 'single'
+
+  try {
+    const res = await cookieBasedClient.models.Subscriber.create(
+      {
+        id: emailLower,
+        email: emailLower,
+        status,
+        optInType,
+        consent: {
+          method: 'webform',
+          timestamp: now,
+          policyVersion: input.policyVersion ?? 'v1',
+          text: input.consentText ?? 'By subscribing, you agree to receive emails from Prepeat. Unsubscribe anytime.',
+        },
+        source: { placement: input.placement, url: input.url, utm: input.utm },
+        tags: [input.placement],
+        metadata: {},
+        export: { status: 'pending', provider: 'mailchimp', emailHash },
+        createdAt: now,
+        updatedAt: now,
+      },
+      { authMode }
+    )
+    return { ok: true, id: res.data?.id }
+  } catch (err: any) {
+    const msg = String(err?.errors?.[0]?.message ?? err?.message ?? '')
+    if (msg.includes('ConditionalCheckFailedException') || msg.includes('already exists')) {
+      return { ok: true, id: emailLower, existed: true } // idempotent UX
+    }
+    throw err
+  }
 }

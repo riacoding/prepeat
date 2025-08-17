@@ -8,6 +8,30 @@ import { demoNotifyPhone } from '../functions/DemoNotifyPhone/resource'
 
 const schema = a
   .schema({
+    Consent: a.customType({
+      method: a.string().required(), // "webform"
+      timestamp: a.datetime().required(), // ISO string
+      policyVersion: a.string(), // e.g. "v1.0"
+      text: a.string(), // short consent copy shown
+    }),
+    UTM: a.customType({
+      source: a.string(), // utm_source
+      medium: a.string(), // utm_medium
+      campaign: a.string(), // utm_campaign
+      term: a.string(),
+      content: a.string(),
+    }),
+    Source: a.customType({
+      placement: a.string().required(), // "homepage_hero" | "footer" | "modal"
+      url: a.string(), // canonical page URL
+      utm: a.ref('UTM'),
+    }),
+    ExportInfo: a.customType({
+      status: a.enum(['pending', 'exported', 'failed']),
+      lastExportAt: a.datetime(),
+      provider: a.string(), // "mailchimp"
+      emailHash: a.string(), // md5(lowercased email) for Mailchimp
+    }),
     TicketResponse: a.customType({
       ticketNumber: a.string(),
     }),
@@ -19,6 +43,27 @@ const schema = a
       level: a.enum(['free', 'basic', 'premium']),
       startDate: a.date(),
     }),
+    Subscriber: a
+      .model({
+        // Use lowercased email as the PRIMARY KEY (id). Pass it explicitly on create.
+        id: a.string().required(), // set to emailLower on write
+        email: a.string().required(), // store original or lowercased (recommend lowercased)
+        status: a.enum(['subscribed', 'unsubscribed', 'cleaned', 'pending']),
+        optInType: a.enum(['single', 'double']),
+        consent: a.ref('Consent'),
+        source: a.ref('Source'),
+        tags: a.string().array(), // e.g., ["homepage-hero"]
+        metadata: a.json(), // e.g., { userAgent: "…" } (avoid IP if you prefer)
+        export: a.ref('ExportInfo'),
+        createdAt: a.datetime().required(),
+        updatedAt: a.datetime().required(),
+      })
+
+      .authorization((allow) => [
+        allow.guest().to(['create']),
+        allow.authenticated().to(['create']),
+        allow.group('Admin').to(['read', 'update', 'delete']),
+      ]),
     User: a
       .model({
         sub: a.string().required(), // Cognito sub
