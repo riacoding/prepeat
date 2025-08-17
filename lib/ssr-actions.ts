@@ -1172,6 +1172,12 @@ export async function subscribeEmailAction(_prevState: ActionState, formData: Fo
       },
       { authMode }
     )
+
+    if (errors?.length) {
+      console.error('create Subscriber errors:', errors)
+      // Optional: surface the first message
+      throw new Error(errors.map((e) => e.message).join('; '))
+    }
     console.log('subscriber:', data)
     return { ok: true, message: 'You’re on the list. Thanks!' }
   } catch (err: any) {
