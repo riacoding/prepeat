@@ -1,9 +1,19 @@
 import { NormalizedItem, ReceiptItem, SquareItem, SquareModifierList } from '@/types'
 import { clsx, type ClassValue } from 'clsx'
 import { format } from 'date-fns'
+import { createHash } from 'node:crypto'
 import { twMerge } from 'tailwind-merge'
 
 const locationId = process.env.NEXT_PUBLIC_LOCATION_ID
+
+export function md5Hex(s: string) {
+  return createHash('md5').update(s, 'utf8').digest('hex')
+}
+
+export function isEmail(s: string) {
+  // light server-side sanity check
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s)
+}
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs))

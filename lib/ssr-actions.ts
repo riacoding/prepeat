@@ -27,10 +27,9 @@
  */
 
 'use server'
-import { secret } from '@aws-amplify/backend'
-import { getCurrentUser } from '@aws-amplify/auth'
+import { headers } from 'next/headers'
 import { cookieBasedClient, getCurrentUserServer } from '@/util/amplify'
-import { Schema } from '@/amplify/data/resource'
+
 import {
   Menu,
   SquareItem,
@@ -58,13 +57,13 @@ import {
   PublicMerchant,
   OrderReceipt,
   DemoOrderInput,
+  ActionState,
 } from '@/types'
-import { extractReceiptItems, orderNumberToTicket } from './utils'
+import { extractReceiptItems, isEmail, md5Hex, orderNumberToTicket } from './utils'
 import { SquareClient, SquareEnvironment } from 'square'
-import { randomUUID, createHash } from 'crypto'
+import { randomUUID } from 'crypto'
 import { sanitizeBigInts } from '@/amplify/functions/webhookProcessor/util'
 import { mockSquareOrderFromCart } from './mockSquareOrderFromCart'
-import { aws_fis } from 'aws-cdk-lib'
 
 const SQUARE_BASE_URL = 'https://connect.squareupsandbox.com/v2'
 const SQUARE_TOKEN = process.env.SQUARE_ACCESS_TOKEN
@@ -1123,52 +1122,61 @@ async function getAmplifyOrderById(orderId: string) {
   return data
 }
 
-export async function subscribeEmail(input: {
-  email: string
-  placement: 'homepage_hero' | 'footer' | 'modal'
-  url?: string
-  utm?: { source?: string; medium?: string; campaign?: string; term?: string; content?: string }
-  policyVersion?: string
-  consentText?: string
-  optInType?: 'single' | 'double'
-}) {
-  const authMode = (await isAuth()) ? 'userPool' : 'identityPool'
-  const emailLower = input.email.trim().toLowerCase()
-  const emailHash = createHash('md5').update(emailLower).digest('hex')
-  const now = new Date().toISOString()
+export async function subscribeEmailAction(_prevState: ActionState, formData: FormData): Promise<ActionState> {
+  const emailRaw = String(formData.get('email') ?? '').trim()
+  const placement = String(formData.get('placement') ?? 'homepage_hero')
+  const url = String(formData.get('url') ?? '')
+  const utm_source = String(formData.get('utm_source') ?? '') || undefined
+  const utm_medium = String(formData.get('utm_medium') ?? '') || undefined
+  const utm_campaign = String(formData.get('utm_campaign') ?? '') || undefined
+  const honeypot = String(formData.get('website') ?? '') // bot trap
 
-  // App-level defaults (since enum fields can’t use .default)
-  const status: Schema['Subscriber']['type']['status'] = 'subscribed'
-  const optInType: Schema['Subscriber']['type']['optInType'] = input.optInType ?? 'single'
+  if (honeypot) {
+    // Silently succeed (don’t confirm to bots).
+    return { ok: true, message: 'Thanks!' }
+  }
+  if (!isEmail(emailRaw)) {
+    return { ok: false, message: 'Please enter a valid email.' }
+  }
+
+  const emailLower = emailRaw.toLowerCase()
+  const emailHash = md5Hex(emailLower)
+  const now = new Date().toISOString()
+  const hdrs = await headers()
+  const userAgent = hdrs.get('user-agent') ?? undefined
 
   try {
-    const res = await cookieBasedClient.models.Subscriber.create(
-      {
-        id: emailLower,
-        email: emailLower,
-        status,
-        optInType,
-        consent: {
-          method: 'webform',
-          timestamp: now,
-          policyVersion: input.policyVersion ?? 'v1',
-          text: input.consentText ?? 'By subscribing, you agree to receive emails from Prepeat. Unsubscribe anytime.',
-        },
-        source: { placement: input.placement, url: input.url, utm: input.utm },
-        tags: [input.placement],
-        metadata: {},
-        export: { status: 'pending', provider: 'mailchimp', emailHash },
-        createdAt: now,
-        updatedAt: now,
+    await cookieBasedClient.models.Subscriber.create({
+      id: emailLower,
+      email: emailLower,
+      status: 'subscribed', // enum default applied here
+      optInType: 'single',
+      consent: {
+        method: 'webform',
+        timestamp: now,
+        policyVersion: 'v1',
+        text: 'By subscribing, you agree to receive emails from Prepeat. Unsubscribe anytime.',
       },
-      { authMode }
-    )
-    return { ok: true, id: res.data?.id }
+      source: {
+        placement: placement as any, // "homepage_hero" | "footer" | "modal"
+        url,
+        utm: { source: utm_source, medium: utm_medium, campaign: utm_campaign },
+      },
+      tags: [placement],
+      metadata: userAgent ? { userAgent } : {},
+      export: { status: 'pending', provider: 'mailchimp', emailHash },
+      createdAt: now,
+      updatedAt: now,
+    })
+
+    return { ok: true, message: 'You’re on the list. Thanks!' }
   } catch (err: any) {
     const msg = String(err?.errors?.[0]?.message ?? err?.message ?? '')
-    if (msg.includes('ConditionalCheckFailedException') || msg.includes('already exists')) {
-      return { ok: true, id: emailLower, existed: true } // idempotent UX
+    // Treat duplicates as success (idempotent UX)
+    if (msg.includes('already exists') || msg.includes('ConditionalCheckFailed')) {
+      return { ok: true, message: 'You’re on the list. Thanks!' }
     }
-    throw err
+    console.error('subscribeEmail error:', err)
+    return { ok: false, message: 'Something went wrong. Please try again.' }
   }
 }

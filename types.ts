@@ -14,6 +14,8 @@ export type User = Schema['User']['type']
 
 export type SortOption = 'Newest' | 'Oldest'
 
+export type ActionState = { ok: boolean; message: string }
+
 export type MenuInput = {
   id?: string
   name: string

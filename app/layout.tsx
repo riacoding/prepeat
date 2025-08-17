@@ -11,6 +11,8 @@ import HeaderLogo from '@/components/HeaderLogo'
 import { SignupProvider } from '@/components/SignupContext'
 import { Toaster } from '@/components/ui/toaster'
 
+export const runtime = 'nodejs'
+
 export const metadata: Metadata = {
   title: 'Prepeat.io',
   description: 'Mobile Menu discovery',

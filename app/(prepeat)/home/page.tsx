@@ -1,3 +1,4 @@
+import EmailCapture from '@/components/EmailCapture'
 import Flags from '@/components/Flags'
 import { Button } from '@/components/ui/button'
 
@@ -80,29 +81,13 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
       <footer className='px-6 py-16 text-center bg-gray-100'>
         <h3 className='text-xl font-semibold mb-6'>Stay informed as we grow</h3>
         <p className='text-gray-600 mb-6 max-w-xl mx-auto leading-relaxed'>
           Join the Prepeat mailing list to get updates on new features, launch news, and early access offers.
         </p>
-        <form className='flex flex-col sm:flex-row justify-center gap-3 max-w-md mx-auto'>
-          <label htmlFor='email' className='sr-only'>
-            Email Address
-          </label>
-          <input
-            id='email'
-            type='email'
-            placeholder='you@example.com'
-            className='px-4 py-3 rounded-xl border border-gray-300 w-full sm:w-64'
-          />
-          <Button
-            type='submit'
-            className='bg-prepeat-orange text-white font-medium px-6 py-3 rounded-xl hover:bg-orange-600 transition'
-          >
-            Join the List
-          </Button>
-        </form>
+
+        <EmailCapture placement='footer' variant='inline' />
       </footer>
     </main>
   )
