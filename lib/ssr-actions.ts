@@ -1165,7 +1165,7 @@ export async function subscribeEmailAction(_prevState: ActionState, formData: Fo
           utm: { source: utm_source, medium: utm_medium, campaign: utm_campaign },
         },
         tags: [placement],
-        metadata: userAgent ? { userAgent } : {},
+        userAgent: userAgent || undefined,
         export: { status: 'pending', provider: 'mailchimp', emailHash },
         createdAt: now,
         updatedAt: now,

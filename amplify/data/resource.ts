@@ -53,7 +53,7 @@ const schema = a
         consent: a.ref('Consent'),
         source: a.ref('Source'),
         tags: a.string().array(), // e.g., ["homepage-hero"]
-        metadata: a.json(), // e.g., { userAgent: "…" } (avoid IP if you prefer)
+        userAgent: a.string(),
         export: a.ref('ExportInfo'),
         createdAt: a.datetime().required(),
         updatedAt: a.datetime().required(),
