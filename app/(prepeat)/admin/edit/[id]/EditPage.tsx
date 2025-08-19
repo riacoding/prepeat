@@ -227,6 +227,10 @@ export default function EditPage({ id }: EditPageParams) {
           <Textarea id='theme' {...register('theme')} rows={6} />
         </div>
 
+        <div>
+          <img src='https://go.prepeat.io/qr/uX7jQZ.svg' alt='QR' width={256} height={256} />
+        </div>
+
         <div className='flex gap-2'>
           <Button type='submit'>{isNew ? 'Create' : 'Update'}</Button>
           <Button type='button' variant='outline' onClick={() => router.push('/admin')}>
