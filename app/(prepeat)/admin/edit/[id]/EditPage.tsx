@@ -52,7 +52,33 @@ export default function EditPage({ id }: EditPageParams) {
   const QR_CODE = 'uX7jQZ'
   const apiBase = 'https://vqb1i0ek4h.execute-api.us-west-2.amazonaws.com/qr2pdf'
   const shortUrl = `https://go.prepeat.io/${QR_CODE}`
-  const pdfHref = `${apiBase}?url=${encodeURIComponent(shortUrl)}&title=${encodeURIComponent('Scan to order')}&subtitle=${encodeURIComponent(merchant?.handle ?? 'Prepeat')}`
+  const title = 'Scan to order'
+  const subtitle = merchant?.handle ?? 'Prepeat'
+  // const pdfHref = `${apiBase}?url=${encodeURIComponent(shortUrl)}&title=${encodeURIComponent('Scan to order')}&subtitle=${encodeURIComponent(merchant?.handle ?? 'Prepeat')}`
+
+  function downloadPdfViaPost() {
+    // create a standalone form so we don't nest inside your main <form>
+    const form = document.createElement('form')
+    form.method = 'POST'
+    form.action = apiBase
+    form.target = '_blank' // opens in new tab; browser downloads the file
+
+    const add = (name: string, value: string) => {
+      const input = document.createElement('input')
+      input.type = 'hidden'
+      input.name = name
+      input.value = value
+      form.appendChild(input)
+    }
+
+    add('url', shortUrl)
+    add('title', title)
+    add('subtitle', subtitle)
+
+    document.body.appendChild(form)
+    form.submit()
+    document.body.removeChild(form)
+  }
 
   useEffect(() => {
     async function fetchItems() {
@@ -238,14 +264,13 @@ export default function EditPage({ id }: EditPageParams) {
         </div>
 
         <div className='border rounded p-3 space-y-2'>
-          <img src={`https://go.prepeat.io/qr/${QR_CODE}.svg`} alt='Menu QR' width={256} height={256} />
           <div className='flex gap-4'>
             <a href={`https://go.prepeat.io/qr/${QR_CODE}.svg`} download className='text-sm underline'>
               Download SVG
             </a>
-            <a href={pdfHref} className='text-sm underline'>
+            <Button type='button' className='text-sm underline' variant='ghost' onClick={downloadPdfViaPost}>
               Download PDF
-            </a>
+            </Button>
           </div>
         </div>
 
