@@ -1,14 +1,51 @@
-import type { APIGatewayProxyHandlerV2 } from 'aws-lambda'
+import type { APIGatewayProxyHandlerV2, APIGatewayProxyEventV2 } from 'aws-lambda'
 import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import QRCode from 'qrcode'
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
-  const q = event.queryStringParameters ?? {}
-  const url = q.url
-  if (!url) return { statusCode: 400, body: 'Missing url' }
+  function getParams(event: APIGatewayProxyEventV2): Record<string, string> {
+    const method = event.requestContext?.http?.method ?? 'GET'
+    const headers = event.headers || {}
+    const ct = (headers['content-type'] || headers['Content-Type'] || '').toLowerCase()
 
-  const title = q.title || 'Scan to view menu'
-  const subtitle = q.subtitle || ''
+    // POST: JSON
+    if (method === 'POST' && ct.includes('application/json')) {
+      let body: unknown = {}
+      try {
+        body = JSON.parse(event.body || '{}')
+      } catch {}
+      const out: Record<string, string> = {}
+      for (const [k, v] of Object.entries(body as Record<string, unknown>)) {
+        if (typeof v === 'string') out[k] = v
+        else if (v != null) out[k] = String(v)
+      }
+      return out
+    }
+
+    // POST: x-www-form-urlencoded
+    if (method === 'POST' && ct.includes('application/x-www-form-urlencoded')) {
+      const sp = new URLSearchParams(event.body || '')
+      const out: Record<string, string> = {}
+      sp.forEach((v, k) => (out[k] = v))
+      return out
+    }
+
+    // GET (queryStringParameters)
+    const qs = event.queryStringParameters ?? {}
+    const out: Record<string, string> = {}
+    for (const k in qs) {
+      const v = qs[k]
+      if (v !== undefined) out[k] = v
+    }
+    return out
+  }
+
+  const params = getParams(event)
+  const url = params.url
+  const title = params.title || 'Scan to view menu'
+  const subtitle = params.subtitle || ''
+
+  if (!url) return { statusCode: 400, body: 'Missing url' }
 
   // QR as PNG bytes (no filesystem deps)
   const dataUrl = await QRCode.toDataURL(url, { errorCorrectionLevel: 'Q', margin: 0, scale: 10 })
