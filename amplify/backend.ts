@@ -16,6 +16,7 @@ import { RemovalPolicy, Stack } from 'aws-cdk-lib'
 import { SquareWebhookStack } from './custom/webhookqueue/resource'
 import { squareAuth } from './functions/getSquareAuth/resource'
 import { demoNotifyPhone } from './functions/DemoNotifyPhone/resource'
+import { qr2PDF } from './functions/Qr2PDF/resource'
 import branchName from 'current-git-branch'
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb'
 
@@ -43,6 +44,7 @@ const backend = defineBackend({
   twilioInbound,
   squareAuth,
   demoNotifyPhone,
+  qr2PDF,
 })
 const environment = process.env.ENVIRONMENT ?? 'dev'
 const ordersTable = backend.data.resources.tables['Order']
@@ -85,7 +87,7 @@ const squareWebhook = new SquareWebhookStack(backend.data.stack, 'SquareWebHookS
 const apiStack = Stack.of(backend.webhook.resources.lambda.stack)
 
 const httpApi = new HttpApi(apiStack, 'SquareWebhookApi', {
-  apiName: 'square-webhook-api',
+  apiName: `prepeat-webhook-api-${ENV_NAME}`,
   corsPreflight: {
     allowMethods: [CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
     allowOrigins: ['*'],
@@ -95,6 +97,7 @@ const httpApi = new HttpApi(apiStack, 'SquareWebhookApi', {
 })
 
 const webhookIntegration = new HttpLambdaIntegration('SquareWebhookIntegration', backend.webhook.resources.lambda)
+const qr2PDFIntegration = new HttpLambdaIntegration('Qr2PDFIntegration', backend.qr2PDF.resources.lambda)
 const twilioIntegration = new HttpLambdaIntegration('TwilioIntegration', backend.twilioInbound.resources.lambda, {
   payloadFormatVersion: PayloadFormatVersion.VERSION_1_0,
 })
@@ -111,6 +114,12 @@ httpApi.addRoutes({
   path: '/twilio-inbound',
   methods: [HttpMethod.POST, HttpMethod.OPTIONS],
   integration: twilioIntegration,
+})
+
+httpApi.addRoutes({
+  path: '/qr2pdf',
+  methods: [HttpMethod.POST, HttpMethod.OPTIONS],
+  integration: qr2PDFIntegration,
 })
 
 // Output API info
