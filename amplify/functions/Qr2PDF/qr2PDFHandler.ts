@@ -41,6 +41,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   }
 
   const params = getParams(event)
+  console.log('params:', params)
   const url = params.url
   const title = params.title || 'Scan to view menu'
   const subtitle = params.subtitle || ''
