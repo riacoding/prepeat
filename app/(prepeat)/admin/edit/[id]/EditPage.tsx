@@ -48,6 +48,12 @@ export default function EditPage({ id }: EditPageParams) {
   const router = useRouter()
   const isNew = id === 'new'
 
+  // Hard-coded QR → PDF download (no fluff)
+  const QR_CODE = 'uX7jQZ'
+  const apiBase = 'https://vqb1i0ek4h.execute-api.us-west-2.amazonaws.com/qr2pdf'
+  const shortUrl = `https://go.prepeat.io/${QR_CODE}`
+  const pdfHref = `${apiBase}?url=${encodeURIComponent(shortUrl)}&title=${encodeURIComponent('Scan to order')}&subtitle=${encodeURIComponent(merchant?.handle ?? 'Prepeat')}`
+
   useEffect(() => {
     async function fetchItems() {
       const items = await getCatalogItems(merchant.id)
@@ -229,13 +235,18 @@ export default function EditPage({ id }: EditPageParams) {
 
         <div>
           <img src='https://go.prepeat.io/qr/uX7jQZ.svg' alt='QR' width={256} height={256} />
-          <a
-            href='https://go.prepeat.io/qr/uX7jQZ.svg' // or your PDF endpoint when ready
-            download
-            className='text-sm underline'
-          >
-            Download QR (SVG)
-          </a>
+        </div>
+
+        <div className='border rounded p-3 space-y-2'>
+          <img src={`https://go.prepeat.io/qr/${QR_CODE}.svg`} alt='Menu QR' width={256} height={256} />
+          <div className='flex gap-4'>
+            <a href={`https://go.prepeat.io/qr/${QR_CODE}.svg`} download className='text-sm underline'>
+              Download SVG
+            </a>
+            <a href={pdfHref} className='text-sm underline'>
+              Download PDF
+            </a>
+          </div>
         </div>
 
         <div className='flex gap-2'>
