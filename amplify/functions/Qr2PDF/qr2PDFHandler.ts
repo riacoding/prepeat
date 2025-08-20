@@ -4,34 +4,56 @@ import QRCode from 'qrcode'
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   console.log('event:', event)
+
   function getParams(event: APIGatewayProxyEventV2): Record<string, string> {
     const method = event.requestContext?.http?.method ?? 'GET'
     const headers = event.headers || {}
     const ct = (headers['content-type'] || headers['Content-Type'] || '').toLowerCase()
 
+    // Helper: normalize (decode if base64)
+    const bodyString = (() => {
+      const raw = event.body ?? ''
+      return event.isBase64Encoded ? Buffer.from(raw, 'base64').toString('utf8') : raw
+    })()
+
     // POST: JSON
     if (method === 'POST' && ct.includes('application/json')) {
-      let body: unknown = {}
       try {
-        body = JSON.parse(event.body || '{}')
-      } catch {}
-      const out: Record<string, string> = {}
-      for (const [k, v] of Object.entries(body as Record<string, unknown>)) {
-        if (typeof v === 'string') out[k] = v
-        else if (v != null) out[k] = String(v)
+        const obj = JSON.parse(bodyString || '{}') as Record<string, unknown>
+        const out: Record<string, string> = {}
+        for (const [k, v] of Object.entries(obj)) if (v != null) out[k] = String(v)
+        return out
+      } catch {
+        /* fall through */
       }
-      return out
     }
 
-    // POST: x-www-form-urlencoded
-    if (method === 'POST' && ct.includes('application/x-www-form-urlencoded')) {
-      const sp = new URLSearchParams(event.body || '')
+    // POST: form-urlencoded (or unknown CT — be liberal)
+    if (method === 'POST') {
+      // Try URLSearchParams first
       const out: Record<string, string> = {}
-      sp.forEach((v, k) => (out[k] = v))
-      return out
+      try {
+        const sp = new URLSearchParams(bodyString || '')
+        sp.forEach((v, k) => (out[k] = v))
+        if (Object.keys(out).length) return out
+      } catch {
+        /* ignore */
+      }
+
+      // Fallback: manual parse (handles '+' as spaces)
+      if (bodyString) {
+        for (const pair of bodyString.split('&')) {
+          if (!pair) continue
+          const [k, v = ''] = pair.split('=')
+          const key = decodeURIComponent(k.replace(/\+/g, ' '))
+          const val = decodeURIComponent(v.replace(/\+/g, ' '))
+          out[key] = val
+        }
+        if (Object.keys(out).length) return out
+      }
     }
 
-    // GET (queryStringParameters)
+    // GET: query string
     const qs = event.queryStringParameters ?? {}
     const out: Record<string, string> = {}
     for (const k in qs) {
