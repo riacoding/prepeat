@@ -229,6 +229,13 @@ export default function EditPage({ id }: EditPageParams) {
 
         <div>
           <img src='https://go.prepeat.io/qr/uX7jQZ.svg' alt='QR' width={256} height={256} />
+          <a
+            href='https://go.prepeat.io/qr/uX7jQZ.svg' // or your PDF endpoint when ready
+            download
+            className='text-sm underline'
+          >
+            Download QR (SVG)
+          </a>
         </div>
 
         <div className='flex gap-2'>
