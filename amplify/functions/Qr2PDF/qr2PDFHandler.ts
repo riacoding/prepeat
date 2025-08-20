@@ -3,6 +3,7 @@ import { PDFDocument, StandardFonts, rgb } from 'pdf-lib'
 import QRCode from 'qrcode'
 
 export const handler: APIGatewayProxyHandlerV2 = async (event) => {
+  console.log('event:', event)
   function getParams(event: APIGatewayProxyEventV2): Record<string, string> {
     const method = event.requestContext?.http?.method ?? 'GET'
     const headers = event.headers || {}
