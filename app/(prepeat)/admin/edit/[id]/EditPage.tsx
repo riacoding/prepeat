@@ -96,7 +96,7 @@ export default function EditPage({ id }: EditPageParams) {
 
   const { register, handleSubmit, setValue, reset, watch } = useForm<FormValues>()
   const [loading, setLoading] = useState(true)
-
+  const menuName = watch('name')
   const toggle = async (catalogItemId: string) => {
     if (!menuId) {
       console.error('Missing menuId when trying to create MenuItem')
@@ -265,7 +265,11 @@ export default function EditPage({ id }: EditPageParams) {
 
         <div className='border rounded p-3 space-y-2'>
           <div className='flex gap-4'>
-            <a href={`https://go.prepeat.io/qr/${QR_CODE}.svg`} download className='text-sm underline'>
+            <a
+              href={`https://go.prepeat.io/qr/${QR_CODE}.svg`}
+              download={`${menuName}.svg`}
+              className='text-sm underline'
+            >
               Download SVG
             </a>
             <Button type='button' className='text-sm underline' variant='ghost' onClick={downloadPdfViaPost}>
