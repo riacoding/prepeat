@@ -265,6 +265,7 @@ export default function EditPage({ id }: EditPageParams) {
         </div>
 
         <div className='border rounded p-3 space-y-2'>
+          <h2 className='font-semibold mb-2'>QR Codes</h2>
           <Button asChild variant='link'>
             <a href={`https://go.prepeat.io/qr/download/${QR_CODE}.svg?name=${encodeURIComponent(menuName)}`}>
               Download SVG
