@@ -56,7 +56,7 @@ export default function EditPage({ id }: EditPageParams) {
   const subtitle = merchant?.handle ?? 'Prepeat'
   // const pdfHref = `${apiBase}?url=${encodeURIComponent(shortUrl)}&title=${encodeURIComponent('Scan to order')}&subtitle=${encodeURIComponent(merchant?.handle ?? 'Prepeat')}`
 
-  function downloadPdfViaPost() {
+  function downloadPdfViaPost(layout: string = '1up') {
     // create a standalone form so we don't nest inside your main <form>
     const form = document.createElement('form')
     form.method = 'POST'
@@ -74,6 +74,7 @@ export default function EditPage({ id }: EditPageParams) {
     add('url', shortUrl)
     add('title', title)
     add('subtitle', subtitle)
+    add('layout', layout)
 
     document.body.appendChild(form)
     form.submit()
@@ -269,9 +270,11 @@ export default function EditPage({ id }: EditPageParams) {
               Download SVG
             </a>
           </Button>
-          {/* Pass in type 1-up 2-up etc to downloadPdfViaPost */}
-          <Button type='button' variant='link' onClick={downloadPdfViaPost}>
-            Download PDF
+          <Button type='button' variant='link' onClick={() => downloadPdfViaPost('1up')}>
+            Download 1up PDF
+          </Button>
+          <Button type='button' variant='link' onClick={() => downloadPdfViaPost('2up')}>
+            Download 2up PDF
           </Button>
         </div>
 

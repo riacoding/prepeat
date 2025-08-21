@@ -68,7 +68,7 @@ export const handler: APIGatewayProxyHandlerV2 = async (event) => {
   const url = params.url
   const title = params.title || 'Scan to view menu'
   const subtitle = params.subtitle || ''
-  const layout = params.layout || '2up'
+  const layout = params.layout || '1up'
 
   if (!url) return { statusCode: 400, body: 'Missing url' }
 
