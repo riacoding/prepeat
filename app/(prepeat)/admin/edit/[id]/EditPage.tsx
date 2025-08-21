@@ -269,7 +269,7 @@ export default function EditPage({ id }: EditPageParams) {
               Download SVG
             </a>
           </Button>
-
+          {/* Pass in type 1-up 2-up etc to downloadPdfViaPost */}
           <Button type='button' variant='link' onClick={downloadPdfViaPost}>
             Download PDF
           </Button>
