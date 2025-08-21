@@ -144,7 +144,12 @@ export async function makeTwoUpQrPdf(url: string, title: string, subtitle?: stri
   drawHalf(halfW)
 
   // (Optional) faint cut line
-  // page.drawLine({ start: { x: halfW, y: 36 }, end: { x: halfW, y: height - 36 }, thickness: 0.5, color: rgb(0.8,0.8,0.8) })
+  page.drawLine({
+    start: { x: halfW, y: 36 },
+    end: { x: halfW, y: height - 36 },
+    thickness: 0.5,
+    color: rgb(0.8, 0.8, 0.8),
+  })
 
   const bytes = await pdf.save()
   return {
