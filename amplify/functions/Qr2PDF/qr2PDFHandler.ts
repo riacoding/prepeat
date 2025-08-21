@@ -84,73 +84,69 @@ export async function makeTwoUpQrPdf(url: string, title: string, subtitle?: stri
   const pngBytes = Buffer.from(dataUrl.split(',')[1]!, 'base64')
 
   const pdf = await PDFDocument.create()
-  const page = pdf.addPage([612, 792]) // US Letter portrait
+  const page = pdf.addPage([792, 612]) // US Letter landscape
   const helv = await pdf.embedFont(StandardFonts.Helvetica)
   const qrImg = await pdf.embedPng(pngBytes)
 
-  const width = page.getWidth() // 612
-  const height = page.getHeight() // 792
-  const halfH = height / 2 // 396
+  const width = page.getWidth() // 792
+  const height = page.getHeight() // 612
+  const halfW = width / 2 // 396
 
-  // Layout constants
-  const outerXPad = 48 // left/right padding inside each half
-  const topPad = 36 // top padding inside each half
-  const bottomPad = 36 // bottom padding inside each half
+  // Layout constants (within each half)
+  const xPad = 48
+  const topPad = 36
+  const bottomPad = 36
   const titleSize = 24
   const subtitleSize = 12
-  const titleGap = 6 // gap between title and subtitle
-  const blockGap = 14 // gap between text block and QR
-  const maxQrDefault = 256 // preferred cap so QR isn't huge
+  const titleGap = 6
+  const blockGap = 14
+  const maxQrDefault = 256
 
-  // helper: center text
-  const drawCenteredText = (text: string, size: number, y: number, color = rgb(0, 0, 0)) => {
+  const drawCenteredText = (text: string, size: number, xCenter: number, y: number, color = rgb(0, 0, 0)) => {
     const w = helv.widthOfTextAtSize(text, size)
-    const x = (width - w) / 2
-    page.drawText(text, { x, y, size, font: helv, color })
+    page.drawText(text, { x: xCenter - w / 2, y, size, font: helv, color })
   }
 
-  // Draw one half: region is [y0, y0 + halfH]
-  const drawHalf = (y0: number) => {
-    const yTop = y0 + halfH
+  // Draw one vertical slice (left or right)
+  const drawHalf = (x0: number) => {
+    const xCenter = x0 + halfW / 2
+    const yTop = height - topPad
 
-    // Title + subtitle centered across the half
-    let yCursor = yTop - topPad - titleSize
-    drawCenteredText(title, titleSize, yCursor)
+    // Title
+    let yCursor = yTop - titleSize
+    drawCenteredText(title, titleSize, xCenter, yCursor)
 
+    // Subtitle
     if (subtitle) {
       yCursor -= subtitleSize + titleGap
-      drawCenteredText(subtitle, subtitleSize, yCursor, rgb(0.4, 0.4, 0.4))
+      drawCenteredText(subtitle, subtitleSize, xCenter, yCursor, rgb(0.4, 0.4, 0.4))
     }
 
-    // Compute available space for QR below the text block
-    const textBottomY = subtitle ? yCursor : yTop - topPad - titleSize
-    const availBottom = y0 + bottomPad
+    // Space available for QR beneath text
+    const textBottomY = subtitle ? yCursor : yTop - titleSize
     const availTop = textBottomY - blockGap
+    const availBottom = bottomPad
     const availHeight = Math.max(0, availTop - availBottom)
 
-    // QR should fit within both width and available height of the half
-    const maxQrWidth = width - outerXPad * 2
+    const maxQrWidth = halfW - xPad * 2
     const qrSize = Math.max(
-      96, // minimum so it stays scannable
+      96, // keep scannable
       Math.min(maxQrDefault, maxQrWidth, availHeight)
     )
 
-    // Center QR in the remaining vertical space of the half (below text)
-    const qrX = (width - qrSize) / 2
+    const qrX = xCenter - qrSize / 2
     const qrY = availBottom + (availHeight - qrSize) / 2
-
     page.drawImage(qrImg, { x: qrX, y: qrY, width: qrSize, height: qrSize })
   }
 
-  // Top half then bottom half
-  drawHalf(halfH) // top half (region bottom starts at half height)
-  drawHalf(0) // bottom half
+  // Left and right halves
+  drawHalf(0)
+  drawHalf(halfW)
 
-  // (Optional) faint cut line between halves
-  // page.drawLine({ start: {x: 36, y: halfH}, end: {x: width-36, y: halfH}, thickness: 0.5, color: rgb(0.8,0.8,0.8) })
+  // (Optional) faint cut line
+  // page.drawLine({ start: { x: halfW, y: 36 }, end: { x: halfW, y: height - 36 }, thickness: 0.5, color: rgb(0.8,0.8,0.8) })
 
   const bytes = await pdf.save()
-
   return {
     statusCode: 200,
     headers: {
