@@ -264,14 +264,15 @@ export default function EditPage({ id }: EditPageParams) {
         </div>
 
         <div className='border rounded p-3 space-y-2'>
-          <div className='flex gap-4'>
-            <a href={`https://go.prepeat.io/qr/download/${QR_CODE}.svg?name=${menuName}`} className='text-sm underline'>
+          <Button asChild variant='link'>
+            <a href={`https://go.prepeat.io/qr/download/${QR_CODE}.svg?name=${encodeURIComponent(menuName)}`}>
               Download SVG
             </a>
-            <Button type='button' className='text-sm underline' variant='ghost' onClick={downloadPdfViaPost}>
-              Download PDF
-            </Button>
-          </div>
+          </Button>
+
+          <Button type='button' variant='link' onClick={downloadPdfViaPost}>
+            Download PDF
+          </Button>
         </div>
 
         <div className='flex gap-2'>
