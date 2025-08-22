@@ -259,11 +259,6 @@ export default function EditPage({ id }: EditPageParams) {
           <Label htmlFor='theme'>Theme JSON</Label>
           <Textarea id='theme' {...register('theme')} rows={6} />
         </div>
-
-        <div>
-          <img src='https://go.prepeat.io/qr/uX7jQZ.svg' alt='QR' width={256} height={256} />
-        </div>
-
         <div className='border rounded p-3 space-y-2'>
           <h2 className='font-semibold mb-2'>QR Code</h2>
           <div>
