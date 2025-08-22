@@ -18,17 +18,19 @@ export type EagerMenu = Omit<Schema['Menu']['type'], 'menuItems'> & {
 
 export const fetchMenuWithItems = cache(
   async (locationId: string): Promise<{ menu: EagerMenu; items: NormalizedItem[] }> => {
+    const run = Math.random().toString(36).slice(2, 7)
+    const L = (s: string) => `${s}:${locationId}#${run}`
     console.log(`[FETCH MENU] Fetching fresh data for: ${locationId}`)
 
-    console.time(`menu:${locationId}`)
-    console.time(`menu:getCurrent:${locationId}`)
+    console.time(L('menu'))
+    console.time(L('getCurrent'))
     const menu = await getCurrentMenu(locationId)
     if (!menu) throw new Error('No active menu for this location')
-    console.timeEnd(`menu:getCurrent:${locationId}`)
+    console.timeEnd(L('getCurrent'))
 
-    console.time(`menu:itemsQuery:${locationId}`)
+    console.time(L('itemsQuery'))
     const { data: menuItems, errors } = await menu.menuItems()
-    console.timeEnd(`menu:itemsQuery:${locationId}`)
+    console.timeEnd(L('itemsQuery'))
 
     if (errors && errors.length > 0) {
       console.error('Error loading menuItems', errors)
@@ -37,9 +39,9 @@ export const fetchMenuWithItems = cache(
 
     const squareIds = menuItems.map((item) => item.catalogItemId)
 
-    console.time(`menu:square:${locationId}`)
+    console.time(L('square'))
     const rawItems = await fetchMenuItemsWithModifiers(squareIds)
-    console.timeEnd(`menu:square:${locationId}`)
+    console.timeEnd(L('square'))
 
     //console.log('rawitems', rawItems, squareIds)
 
@@ -71,7 +73,7 @@ export const fetchMenuWithItems = cache(
         isFeatured: mi.isFeatured ?? undefined,
       })),
     }
-    console.timeEnd(`menu:${locationId}`)
+    console.timeEnd(L('menu'))
 
     return { menu: sanitizedMenu, items: normalizedItems }
   }
