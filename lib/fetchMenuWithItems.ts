@@ -20,10 +20,15 @@ export const fetchMenuWithItems = cache(
   async (locationId: string): Promise<{ menu: EagerMenu; items: NormalizedItem[] }> => {
     console.log(`[FETCH MENU] Fetching fresh data for: ${locationId}`)
 
+    console.time(`menu:${locationId}`)
+    console.time(`menu:getCurrent:${locationId}`)
     const menu = await getCurrentMenu(locationId)
     if (!menu) throw new Error('No active menu for this location')
+    console.timeEnd(`menu:getCurrent:${locationId}`)
 
+    console.time(`menu:itemsQuery:${locationId}`)
     const { data: menuItems, errors } = await menu.menuItems()
+    console.timeEnd(`menu:itemsQuery:${locationId}`)
 
     if (errors && errors.length > 0) {
       console.error('Error loading menuItems', errors)
@@ -32,7 +37,9 @@ export const fetchMenuWithItems = cache(
 
     const squareIds = menuItems.map((item) => item.catalogItemId)
 
+    console.time(`menu:square:${locationId}`)
     const rawItems = await fetchMenuItemsWithModifiers(squareIds)
+    console.timeEnd(`menu:square:${locationId}`)
 
     //console.log('rawitems', rawItems, squareIds)
 
@@ -64,6 +71,7 @@ export const fetchMenuWithItems = cache(
         isFeatured: mi.isFeatured ?? undefined,
       })),
     }
+    console.timeEnd(`menu:${locationId}`)
 
     return { menu: sanitizedMenu, items: normalizedItems }
   }
