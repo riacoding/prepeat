@@ -12,13 +12,14 @@ import { PolicyStatement } from 'aws-cdk-lib/aws-iam'
 import { HttpIamAuthorizer } from 'aws-cdk-lib/aws-apigatewayv2-authorizers'
 import { HttpLambdaIntegration } from 'aws-cdk-lib/aws-apigatewayv2-integrations'
 import { CorsHttpMethod, HttpApi, HttpMethod, PayloadFormatVersion } from 'aws-cdk-lib/aws-apigatewayv2'
-import { RemovalPolicy, Stack } from 'aws-cdk-lib'
+import { CfnOutput, RemovalPolicy, Stack } from 'aws-cdk-lib'
 import { SquareWebhookStack } from './custom/webhookqueue/resource'
 import { squareAuth } from './functions/getSquareAuth/resource'
 import { demoNotifyPhone } from './functions/DemoNotifyPhone/resource'
 import { qr2PDF } from './functions/Qr2PDF/resource'
 import branchName from 'current-git-branch'
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb'
+import * as iam from 'aws-cdk-lib/aws-iam'
 
 config({ path: '.env.local', override: false })
 
@@ -62,6 +63,34 @@ const APP_BASE_URL =
     : ENV_NAME === 'prod'
       ? 'https://main.dgs4gp483bprx.amplifyapp.com/'
       : 'http://localhost:3000'
+
+//Cache table
+const cacheStack = backend.createStack('CacheStack')
+const cacheTable = new Table(cacheStack, 'MenuCache', {
+  tableName: 'MenuCache',
+  partitionKey: { name: 'pk', type: AttributeType.STRING },
+  billingMode: BillingMode.PAY_PER_REQUEST,
+  timeToLiveAttribute: 'ttl', // auto-expire day buckets
+  removalPolicy: RemovalPolicy.DESTROY, // dev only; switch to RETAIN in prod
+})
+
+// Compute role that Amplify Hosting’s SSR runtime will assume
+const computeRole = new iam.Role(cacheStack, 'AmplifyComputeRole', {
+  roleName: 'amplify-compute-menu-cache',
+  assumedBy: new iam.ServicePrincipal('amplify.amazonaws.com'),
+  description: 'Amplify Hosting SSR can access menu-cache DynamoDB',
+})
+
+// Minimal permissions (or use cacheTable.grantReadWriteData(computeRole))
+computeRole.addToPolicy(
+  new iam.PolicyStatement({
+    actions: ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:DeleteItem'],
+    resources: [cacheTable.tableArn],
+  })
+)
+
+new CfnOutput(cacheStack, 'MenuCacheTableName', { value: cacheTable.tableName })
+new CfnOutput(cacheStack, 'AmplifyComputeRoleArn', { value: computeRole.roleArn })
 
 // standalone table just for quotas (pk=phoneHash, sk=YYYY-MM-DD)
 const rateStack = backend.createStack('DemoNotifyRateLimit')
