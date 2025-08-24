@@ -65,7 +65,7 @@ const APP_BASE_URL =
       : 'http://localhost:3000'
 
 //Cache table
-const cacheStack = backend.createStack('CacheStack')
+const cacheStack = backend.createStack(`CacheStack-${ENV_NAME}`)
 const cacheTable = new Table(cacheStack, 'MenuCache', {
   tableName: `MenuCache-${ENV_NAME}`,
   partitionKey: { name: 'pk', type: AttributeType.STRING },
