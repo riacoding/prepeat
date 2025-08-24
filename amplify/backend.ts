@@ -67,7 +67,7 @@ const APP_BASE_URL =
 //Cache table
 const cacheStack = backend.createStack('CacheStack')
 const cacheTable = new Table(cacheStack, 'MenuCache', {
-  tableName: 'MenuCache',
+  tableName: `MenuCache-${ENV_NAME}`,
   partitionKey: { name: 'pk', type: AttributeType.STRING },
   billingMode: BillingMode.PAY_PER_REQUEST,
   timeToLiveAttribute: 'ttl', // auto-expire day buckets
@@ -76,7 +76,7 @@ const cacheTable = new Table(cacheStack, 'MenuCache', {
 
 // Compute role that Amplify Hosting’s SSR runtime will assume
 const computeRole = new iam.Role(cacheStack, 'AmplifyComputeRole', {
-  roleName: 'amplify-compute-menu-cache',
+  roleName: `amplify-compute-menu-cache-${ENV_NAME}`,
   assumedBy: new iam.ServicePrincipal('amplify.amazonaws.com'),
   description: 'Amplify Hosting SSR can access menu-cache DynamoDB',
 })
