@@ -66,32 +66,32 @@ const APP_BASE_URL =
       : 'http://localhost:3000'
 
 // //Cache table
-// const cacheStack = backend.createStack(`CacheStack-${ENV_NAME}`)
-// const cacheTable = new Table(cacheStack, 'MenuCache', {
-//   tableName: `MenuCache-${ENV_NAME}`,
-//   partitionKey: { name: 'pk', type: AttributeType.STRING },
-//   billingMode: BillingMode.PAY_PER_REQUEST,
-//   timeToLiveAttribute: 'ttl', // auto-expire day buckets
-//   removalPolicy: RemovalPolicy.DESTROY, // dev only; switch to RETAIN in prod
-// })
+const cacheStack = backend.createStack(`CacheStack-${ENV_NAME}`)
+const cacheTable = new Table(cacheStack, 'MenuCache', {
+  tableName: `MenuCache-${ENV_NAME}`,
+  partitionKey: { name: 'pk', type: AttributeType.STRING },
+  billingMode: BillingMode.PAY_PER_REQUEST,
+  timeToLiveAttribute: 'ttl', // auto-expire day buckets
+  removalPolicy: RemovalPolicy.DESTROY, // dev only; switch to RETAIN in prod
+})
 
-// // Compute role that Amplify Hosting’s SSR runtime will assume
-// const computeRole = new iam.Role(cacheStack, 'AmplifyComputeRole', {
-//   roleName: `amplify-compute-menu-cache-${ENV_NAME}`,
-//   assumedBy: new iam.ServicePrincipal('amplify.amazonaws.com'),
-//   description: 'Amplify Hosting SSR can access menu-cache DynamoDB',
-// })
+// Compute role that Amplify Hosting’s SSR runtime will assume
+const computeRole = new iam.Role(cacheStack, 'AmplifyComputeRole', {
+  roleName: `amplify-compute-menu-cache-${ENV_NAME}`,
+  assumedBy: new iam.ServicePrincipal('amplify.amazonaws.com'),
+  description: 'Amplify Hosting SSR can access menu-cache DynamoDB',
+})
 
-// // Minimal permissions (or use cacheTable.grantReadWriteData(computeRole))
-// computeRole.addToPolicy(
-//   new iam.PolicyStatement({
-//     actions: ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:DeleteItem'],
-//     resources: [cacheTable.tableArn],
-//   })
-// )
+// Minimal permissions (or use cacheTable.grantReadWriteData(computeRole))
+computeRole.addToPolicy(
+  new iam.PolicyStatement({
+    actions: ['dynamodb:GetItem', 'dynamodb:PutItem', 'dynamodb:DeleteItem'],
+    resources: [cacheTable.tableArn],
+  })
+)
 
-// new CfnOutput(cacheStack, 'MenuCacheTableName', { value: cacheTable.tableName })
-// new CfnOutput(cacheStack, 'AmplifyComputeRoleArn', { value: computeRole.roleArn })
+new CfnOutput(cacheStack, 'MenuCacheTableName', { value: cacheTable.tableName })
+new CfnOutput(cacheStack, 'AmplifyComputeRoleArn', { value: computeRole.roleArn })
 
 // standalone table just for quotas (pk=phoneHash, sk=YYYY-MM-DD)
 const rateStack = backend.createStack('DemoNotifyRateLimit')
