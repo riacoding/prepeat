@@ -33,7 +33,8 @@ function resolveBranch(): string {
 const BRANCH = resolveBranch()
 
 // Map branch → env label (tweak to your names)
-const ENV_NAME = BRANCH === 'main' || BRANCH === 'prod' ? 'prod' : BRANCH === 'prepeat-dev' ? 'dev' : BRANCH // fallback: use branch as-is
+const ENV_NAME =
+  BRANCH === 'main' || BRANCH === 'prod' ? 'prod' : process.env.ENVIRONMENT === 'sandbox' ? 'sandbox' : 'dev' // fallback: use branch as-is
 
 const backend = defineBackend({
   auth,
