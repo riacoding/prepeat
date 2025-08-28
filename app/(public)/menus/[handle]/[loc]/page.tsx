@@ -10,7 +10,8 @@ type Params = Promise<{ loc: string; handle: string }>
 export async function generateMetadata({ params }: { children: React.ReactNode; params: Params }): Promise<Metadata> {
   const { loc, handle } = await params
   const merchant = await getPublicMerchantFromHandle(handle)
-  const { menu } = await getCachedMenu(loc)
+  if (!merchant) return {}
+  const { menu } = await getCachedMenu(merchant?.id, loc)
 
   const siteUrl = process.env.NEXT_PUBLIC_BASE_URL || 'https://dev.prepeat.io'
   const fullUrl = `${siteUrl}/menus/${handle}/${loc}`

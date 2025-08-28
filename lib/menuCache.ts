@@ -31,6 +31,12 @@ type Snapshot = {
 export async function getCachedMenu(merchantId: string, loc: string): Promise<FetchResult> {
   const pk = pkOf(merchantId, loc)
 
+  if (!loc || !merchantId) {
+    console.error('[MenuCache] called with bad args', { merchantId, loc })
+    // Either throw, or bypass cache and fail fast:
+    throw new Error('getCachedMenu requires merchantId and loc')
+  }
+
   if (!TABLE) {
     console.error('[MenuCache] MENU_CACHE_TABLE env var is not set')
     // fallback: compute without caching so the page still renders
