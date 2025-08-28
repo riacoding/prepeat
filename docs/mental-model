@@ -1,0 +1,85 @@
+# 🗺️ Prepeat MVP Mental Map
+
+## 1. Entry Points
+- **SMS (Twilio)** → App Runner inbound handler → resolves `locationId` → replies with a link.
+- **Web** → `/menus/{handle}/{loc}` pages in Next.js.
+
+---
+
+## 2. Core Models (Amplify schema)
+- **Merchant**
+  - Fields: `id`, `handle`, `squareMerchantId`, etc.
+- **Menu**
+  - Fields: `merchantId`, `locationId`, `isActive`, `isOffline`, etc.
+- **MenuItem**
+  - Belongs to `Menu`, links to Square `CatalogItem`.
+- **Order / DemoOrder**
+  - Records Square orders for real/demo flows.
+
+⚖️ **Contract:**  
+For each `locationId`, there must be **at most one `Menu` with `isActive = true`**.
+
+---
+
+## 3. States
+- **`isActive`**
+  - Menu is published/discoverable.
+  - If `false`: never returned in SMS/web.
+- **`isOffline`**
+  - Menu is active but temporarily unavailable (too busy, closed).
+  - SMS/web should return “offline” message instead of items.
+
+---
+
+## 4. Flows
+- **Texting a loc**
+  1. User texts `locationId`.
+  2. Handler queries GSI `Menu.locationId`.
+  3. Response logic:
+     - `isActive && !isOffline` → reply with `/menus/{handle}/{loc}` link.
+     - `isActive && isOffline` → reply “This menu is offline right now.”
+     - else → reply “Menu not found.”
+
+- **Visiting a menu page**
+  1. Route: `/menus/{handle}/{loc}`.
+  2. Layout fetches menu + items.
+     - **Today:** via `fetchMenuWithItems` (Amplify + Square).
+     - **Future:** via DynamoDB snapshot (fast + cheap).
+
+---
+
+## 5. Caching Layers
+- **Now**
+  - `react/cache` + QuickLRU (fragile on serverless cold starts).
+- **Next**
+  - DynamoDB snapshot (`MenuCache`) for `{menu, items}`.
+- **Later**
+  - ISR in Next.js → cached HTML at the edge.
+
+---
+
+## 6. Environments
+- **Sandbox**, **Dev**, **Prod**.
+- All share **one Twilio SMS number**.
+- **App Runner** routes inbound SMS to the correct environment based on config (`APP_BASE_URL`).
+
+---
+
+## 7. MVP Priorities
+1. **SMS link reliability**
+   - Always resolve `locationId` correctly.
+   - Enforce one active menu per `locationId`.
+   - Return proper reply message.
+   - Log/metric anomalies (not found, offline, multiple).
+
+2. **Web menu reliability**
+   - Always render a menu + items (even if slower today).
+   - Add snapshot caching later.
+
+3. **Operator rules (manual discipline for now)**
+   - Publish = set `isActive = true`.
+   - Unpublish = set `isActive = false`.
+   - Go offline = set `isOffline = true`.
+   - Back online = set `isOffline = false`.
+
+---

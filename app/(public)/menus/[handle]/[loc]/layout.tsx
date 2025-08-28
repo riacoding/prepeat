@@ -1,3 +1,4 @@
+//app/(public)/menus/[handle]/[loc]/layout.tsx
 'use server'
 import { redirect } from 'next/navigation'
 import { MenuProvider } from './MenuProvider'
@@ -16,9 +17,8 @@ export default async function MenuLayout({ children, params }: { children: React
   try {
     const { handle, loc } = await params
     const merchant = await getPublicMerchantFromHandle(handle)
-    const { menu, items } = await getCachedMenu(loc)
-
     if (!merchant) return notFound()
+    const { menu, items } = await getCachedMenu(merchant.id, loc)
 
     return (
       <Providers merchant={merchant} menu={menu} items={items} location={loc}>
