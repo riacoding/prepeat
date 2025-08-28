@@ -90,6 +90,13 @@ computeRole.addToPolicy(
   })
 )
 
+computeRole.addToPolicy(
+  new iam.PolicyStatement({
+    actions: ['cloudwatch:PutMetricData'],
+    resources: ['*'], // PutMetricData only supports '*'
+  })
+)
+
 new CfnOutput(cacheStack, 'MenuCacheTableName', { value: cacheTable.tableName })
 new CfnOutput(cacheStack, 'AmplifyComputeRoleArn', { value: computeRole.roleArn })
 

@@ -2,6 +2,7 @@
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
 import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
 import { fetchMenuWithItems } from '@/lib/fetchMenuWithItems' // your existing function
+import { putMetric } from '@/lib/metrics'
 
 const TABLE = process.env.MENU_CACHE_TABLE! // e.g., "MenuCache-dev"
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
@@ -29,6 +30,7 @@ type Snapshot = {
  *  - On miss, compute via fetchMenuWithItems(loc), persist, return.
  */
 export async function getCachedMenu(merchantId: string, loc: string): Promise<FetchResult> {
+  const t0 = Date.now()
   const pk = pkOf(merchantId, loc)
 
   if (!loc || !merchantId) {
@@ -48,9 +50,11 @@ export async function getCachedMenu(merchantId: string, loc: string): Promise<Fe
   const got = await ddb.send(new GetCommand({ TableName: TABLE, Key: { pk } }))
   const snap = got.Item as Snapshot | undefined
   if (snap?.menu && snap?.items) {
+    await putMetric('Hit', 1)
+    await putMetric('DurationMs', Date.now() - t0)
     return { menu: snap.menu, items: snap.items }
   }
-
+  await putMetric('Miss', 1)
   // 2) Cache miss → compute
   const computed = await fetchMenuWithItems(loc)
 
@@ -67,10 +71,12 @@ export async function getCachedMenu(merchantId: string, loc: string): Promise<Fe
 
   try {
     await ddb.send(new PutCommand({ TableName: TABLE, Item: item }))
+    await putMetric('WriteSuccess', 1)
   } catch (e) {
     // Log but don't fail the request—the page can still render with computed data
+    await putMetric('WriteError', 1)
     console.error('[MenuCache] Put snapshot failed', { pk, error: e })
   }
-
+  await putMetric('DurationMs', Date.now() - t0)
   return computed
 }

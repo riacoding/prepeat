@@ -19,6 +19,7 @@
     "@aws-amplify/adapter-nextjs": "^1.6.0",
     "@aws-amplify/ui-react": "^6.11.0",
     "@aws-amplify/ui-react-storage": "^3.10.2",
+    "@aws-sdk/client-cloudwatch": "^3.876.0",
     "@aws-sdk/client-cognito-identity-provider": "^3.817.0",
     "@aws-sdk/client-dynamodb": "^3.864.0",
     "@aws-sdk/client-sns": "^3.804.0",
