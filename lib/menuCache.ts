@@ -31,6 +31,13 @@ type Snapshot = {
 export async function getCachedMenu(merchantId: string, loc: string): Promise<FetchResult> {
   const pk = pkOf(merchantId, loc)
 
+  if (!TABLE) {
+    console.error('[MenuCache] MENU_CACHE_TABLE env var is not set')
+    // fallback: compute without caching so the page still renders
+
+    return await fetchMenuWithItems(loc)
+  }
+
   // 1) Try cache
   const got = await ddb.send(new GetCommand({ TableName: TABLE, Key: { pk } }))
   const snap = got.Item as Snapshot | undefined
