@@ -2,7 +2,7 @@
 
 import { useMenu } from '@/app/(public)/menus/[handle]/[loc]/MenuProvider'
 import { CartItem, NormalizedTopping } from '@/types'
-import React, { createContext, useContext, useEffect, useState } from 'react'
+import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
 type CartContextType = {
   items: CartItem[]
@@ -14,36 +14,66 @@ type CartContextType = {
   menuSlug: string | null
 }
 
+type CartProviderProps = {
+  children: React.ReactNode
+  handle?: string | null // optional for namespacing
+  location?: string | null // optional for namespacing + menuSlug
+  namespace?: string // explicit namespace (e.g., 'admin')
+}
+
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
-export const CartProvider = ({ children }: { children: React.ReactNode }) => {
-  const { location } = useMenu() // <-- source of truth
+function buildKey(handle?: string | null, location?: string | null, namespace?: string) {
+  if (namespace) return `cartItems:${namespace}`
+  if (handle && location) return `cartItems:${handle}:${location}`
+  return 'cartItems'
+}
 
-  const [items, setItems] = useState<CartItem[]>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('cartItems')
-      if (stored) {
-        try {
-          return JSON.parse(stored)
-        } catch (e) {
-          console.error('Failed to parse stored cart items:', e)
-        }
-      }
+export const CartProvider: React.FC<CartProviderProps> = ({ children, handle, location, namespace }) => {
+  const storageKey = useMemo(() => buildKey(handle ?? null, location ?? null, namespace), [handle, location, namespace])
+
+  const loadItems = () => {
+    if (typeof window === 'undefined') return []
+    // exact namespaced key first
+    const raw = localStorage.getItem(storageKey)
+    if (raw) {
+      try {
+        return JSON.parse(raw) as CartItem[]
+      } catch {}
+    }
+    // one-time legacy migration from 'cartItems' if it matches current location
+    const legacy = localStorage.getItem('cartItems')
+    const lastMenuLoc = localStorage.getItem('lastMenuLoc')
+    if (legacy && location && lastMenuLoc === location) {
+      try {
+        const parsed = JSON.parse(legacy) as CartItem[]
+        localStorage.setItem(storageKey, JSON.stringify(parsed))
+        localStorage.removeItem('cartItems')
+        return parsed
+      } catch {}
     }
     return []
-  })
+  }
 
-  const [menuSlug, setMenuSlug] = useState<string | null>(null)
+  const [items, setItems] = useState<CartItem[]>(loadItems)
+  const [menuSlug, setMenuSlug] = useState<string | null>(location ?? null)
 
+  // keep menuSlug aligned with prop (public routes will pass it)
   useEffect(() => {
     setMenuSlug(location ?? null)
   }, [location])
 
+  // swap storage when namespace/handle/location changes
+  useEffect(() => {
+    setItems(loadItems())
+  }, [storageKey])
+
+  // persist
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      localStorage.setItem('cartItems', JSON.stringify(items))
+      localStorage.setItem(storageKey, JSON.stringify(items))
     }
-  }, [items])
+  }, [storageKey, items])
 
   const toppingsMatch = (a: NormalizedTopping[], b: NormalizedTopping[]) => {
     if (a.length !== b.length) return false
@@ -53,36 +83,30 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
   }
 
   const addItem = (item: CartItem) => {
-    const existingIndex = items.findIndex((i) => i.id === item.id && toppingsMatch(i.toppings, item.toppings))
-
-    if (existingIndex !== -1) {
-      const updated = [...items]
-      updated[existingIndex].quantity += item.quantity
-      setItems(updated)
-    } else {
-      setItems([...items, item])
-    }
+    setItems((prev) => {
+      const idx = prev.findIndex((i) => i.id === item.id && toppingsMatch(i.toppings, item.toppings))
+      if (idx !== -1) {
+        const next = [...prev]
+        next[idx].quantity += item.quantity
+        return next
+      }
+      return [...prev, item]
+    })
   }
 
-  const removeItem = (id: string) => {
-    setItems((prev) => prev.filter((i) => i.id !== id))
-  }
-
+  const removeItem = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id))
   const clearCart = () => {
-    localStorage.removeItem('cartItems')
+    if (typeof window !== 'undefined') localStorage.removeItem(storageKey)
     setItems([])
   }
 
   const getTotal = () =>
     items.reduce((sum, item) => {
-      const toppingsTotal = item.toppings.reduce((tSum, t) => tSum + t.price, 0)
-      return sum + (item.price + toppingsTotal) * item.quantity
+      const t = item.toppings.reduce((s, x) => s + x.price, 0)
+      return sum + (item.price + t) * item.quantity
     }, 0)
 
-  const getTotalItems = () =>
-    items.reduce((sum, item) => {
-      return sum + item.quantity
-    }, 0)
+  const getTotalItems = () => items.reduce((s, i) => s + i.quantity, 0)
 
   return (
     <CartContext.Provider value={{ items, addItem, removeItem, clearCart, getTotal, getTotalItems, menuSlug }}>

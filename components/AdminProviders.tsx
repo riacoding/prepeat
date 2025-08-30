@@ -22,7 +22,7 @@ const AdminProviders: React.FC<RootLayoutProps> = ({ children }) => {
       <LDProvider clientSideID='687543b10a284709202b0777'>
         <QueryClientProvider client={queryClient}>
           <MerchantPublicProvider merchant={null}>
-            <CartProvider>
+            <CartProvider namespace='admin'>
               <div className='flex-1 flex flex-col'>{children}</div>
             </CartProvider>
           </MerchantPublicProvider>

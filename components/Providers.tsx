@@ -28,7 +28,7 @@ const Providers: React.FC<RootLayoutProps> = ({ children, merchant, items, menu,
       <MerchantPublicProvider merchant={merchant}>
         <QueryClientProvider client={queryClient}>
           <MenuProvider items={items} menu={menu} location={location}>
-            <CartProvider>
+            <CartProvider handle={merchant?.handle ?? null} location={location}>
               <div className='flex-1 flex flex-col'>{children}</div>
             </CartProvider>
           </MenuProvider>
