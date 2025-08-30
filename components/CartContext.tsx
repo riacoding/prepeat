@@ -1,5 +1,6 @@
 'use client'
 
+import { useMenu } from '@/app/(public)/menus/[handle]/[loc]/MenuProvider'
 import { CartItem, NormalizedTopping } from '@/types'
 import React, { createContext, useContext, useEffect, useState } from 'react'
 
@@ -16,6 +17,8 @@ type CartContextType = {
 const CartContext = createContext<CartContextType | undefined>(undefined)
 
 export const CartProvider = ({ children }: { children: React.ReactNode }) => {
+  const { location } = useMenu() // <-- source of truth
+
   const [items, setItems] = useState<CartItem[]>(() => {
     if (typeof window !== 'undefined') {
       const stored = localStorage.getItem('cartItems')
@@ -30,21 +33,11 @@ export const CartProvider = ({ children }: { children: React.ReactNode }) => {
     return []
   })
 
-  const [menuSlug, setMenuSlug] = useState<string | null>(() => {
-    if (typeof window !== 'undefined') {
-      const stored = localStorage.getItem('lastMenuLoc')
-      if (stored) {
-        try {
-          return stored
-        } catch (e) {
-          console.error('Failed to parse stored menu slug:', e)
-        }
-      }
-    } else {
-      console.log('lastMenuLoc is undefined')
-    }
-    return null
-  })
+  const [menuSlug, setMenuSlug] = useState<string | null>(null)
+
+  useEffect(() => {
+    setMenuSlug(location ?? null)
+  }, [location])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
