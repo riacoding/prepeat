@@ -40,7 +40,7 @@ export default async function OnboardingPage() {
     return (
       <>
         <ClearSignupSession />
-        <SquareLinkStep merchant={merchant} />
+        <SquareLinkStep />
       </>
     )
   }

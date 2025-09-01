@@ -12,7 +12,7 @@ function OnboardingStepManager() {
   return (
     <div className='w-full md:max-w-md mx-auto p-4'>
       {currentStep === 'business' && <CreateBusinessForm />}
-      {currentStep === 'link' && <LinkAccount merchant={merchant as PublicMerchant} />}
+      {currentStep === 'link' && <LinkAccount />}
     </div>
   )
 }
