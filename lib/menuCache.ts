@@ -5,6 +5,7 @@ import { fetchMenuWithItems } from '@/lib/fetchMenuWithItems' // your existing f
 import { putMetric } from '@/lib/metrics'
 
 const TABLE = process.env.MENU_CACHE_TABLE! // e.g., "MenuCache-dev"
+console.log(TABLE ?? 'no Cache Table')
 const ddb = DynamoDBDocumentClient.from(new DynamoDBClient({}), {
   marshallOptions: { removeUndefinedValues: true },
 })
@@ -30,6 +31,7 @@ type Snapshot = {
  *  - On miss, compute via fetchMenuWithItems(loc), persist, return.
  */
 export async function getCachedMenu(merchantId: string, loc: string): Promise<FetchResult> {
+  console.log('[local SSR] ENV_NAME:', process.env.NEXT_PUBLIC_ENVIRONMENT, 'table:', TABLE)
   const t0 = Date.now()
   const pk = pkOf(merchantId, loc)
 

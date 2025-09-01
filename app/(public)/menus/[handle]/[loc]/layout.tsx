@@ -17,6 +17,7 @@ export default async function MenuLayout({ children, params }: { children: React
   try {
     const { handle, loc } = await params
     const merchant = await getPublicMerchantFromHandle(handle)
+    console.log('merchant', merchant, handle, loc)
     if (!loc) {
       console.error('Menu route missing loc param')
       throw new Error('Missing locationId')
