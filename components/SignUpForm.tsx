@@ -11,12 +11,20 @@ import { useState } from 'react'
 import { useToast } from '@/hooks/use-toast'
 import { useRouter } from 'next/navigation'
 
-const signupSchema = z.object({
-  firstName: z.string().min(1, 'First name is required'),
-  lastName: z.string().min(1, 'Last name is required'),
-  email: z.string().email('Invalid email address'),
-  password: z.string().min(8, 'Password must be at least 8 characters'),
-})
+const signupSchema = z
+  .object({
+    firstName: z.string().min(1, 'First name is required'),
+    lastName: z.string().min(1, 'Last name is required'),
+    email: z.string().email('Invalid email address'),
+    password: z.string().min(8, 'Password must be at least 8 characters'),
+    // NEW: confirmPassword
+    confirmPassword: z.string().min(1, 'Please confirm your password'),
+  })
+  // NEW: cross-field validation
+  .refine((vals) => vals.password === vals.confirmPassword, {
+    path: ['confirmPassword'],
+    message: 'Passwords do not match',
+  })
 
 type SignupFormValues = z.infer<typeof signupSchema>
 
@@ -39,7 +47,7 @@ export default function SignupForm() {
     try {
       const result = await signUp({
         username: data.email,
-        password: data.password,
+        password: data.password, // confirmPassword is only for validation
         options: {
           autoSignIn: true,
           userAttributes: {
@@ -58,8 +66,6 @@ export default function SignupForm() {
           title: 'Account already exists',
           description: 'Redirecting to login...',
         })
-
-        // Slight delay before redirect so user sees the toast
         setTimeout(() => router.push('/login'), 1500)
         console.log(err)
         setServerError(err.message || 'Signup failed')
@@ -98,7 +104,7 @@ export default function SignupForm() {
         <label htmlFor='email' className='block text-sm font-medium text-gray-700 mb-1'>
           Email
         </label>
-        <Input id='email' type='email' placeholder='you@example.com' {...register('email')} />
+        <Input id='email' type='email' placeholder='you@example.com' autoComplete='email' {...register('email')} />
         {errors.email && <p className='text-red-500 text-sm'>{errors.email.message}</p>}
       </div>
 
@@ -106,8 +112,31 @@ export default function SignupForm() {
         <label htmlFor='password' className='block text-sm font-medium text-gray-700 mb-1'>
           Password
         </label>
-        <Input id='password' type='password' placeholder='••••••••' {...register('password')} />
+        <Input
+          id='password'
+          type='password'
+          placeholder='••••••••'
+          autoComplete='new-password'
+          {...register('password')}
+          aria-invalid={!!errors.password}
+        />
         {errors.password && <p className='text-red-500 text-sm'>{errors.password.message}</p>}
+      </div>
+
+      {/* NEW: Confirm Password */}
+      <div>
+        <label htmlFor='confirmPassword' className='block text-sm font-medium text-gray-700 mb-1'>
+          Confirm Password
+        </label>
+        <Input
+          id='confirmPassword'
+          type='password'
+          placeholder='••••••••'
+          autoComplete='new-password'
+          {...register('confirmPassword')}
+          aria-invalid={!!errors.confirmPassword}
+        />
+        {errors.confirmPassword && <p className='text-red-500 text-sm'>{errors.confirmPassword.message}</p>}
       </div>
 
       {serverError && <p className='text-red-500 text-sm'>{serverError}</p>}
