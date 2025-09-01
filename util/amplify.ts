@@ -1,7 +1,7 @@
 import { type Schema } from '@/amplify/data/resource'
 import { generateServerClientUsingCookies } from '@aws-amplify/adapter-nextjs/data'
 import { createServerRunner } from '@aws-amplify/adapter-nextjs'
-import outputs from '../amplify_outputs.json'
+import { outputs } from '../lib/amplifyOutputs'
 import { getCurrentUser } from 'aws-amplify/auth/server'
 import { cookies } from 'next/headers'
 import { generateClient } from 'aws-amplify/data'

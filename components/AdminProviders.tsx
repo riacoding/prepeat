@@ -1,6 +1,6 @@
 'use client'
 import React, { ReactNode } from 'react'
-import outputs from '../amplify_outputs.json'
+import { outputs } from '../lib/amplifyOutputs'
 import { Amplify } from 'aws-amplify'
 import { Authenticator } from '@aws-amplify/ui-react'
 import { CartProvider } from '@/components/CartContext'
