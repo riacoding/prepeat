@@ -60,7 +60,7 @@ cfnResources.amplifyDynamoDbTables['DemoOrder'].timeToLiveAttribute = {
 
 const APP_BASE_URL =
   ENV_NAME === 'dev'
-    ? 'https://prepeat-dev.dgs4gp483bprx.amplifyapp.com'
+    ? 'https://dev.prepeat.io'
     : ENV_NAME === 'prod'
       ? 'https://main.dgs4gp483bprx.amplifyapp.com/'
       : 'http://localhost:3000'
