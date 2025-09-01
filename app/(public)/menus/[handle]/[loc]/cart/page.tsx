@@ -211,6 +211,7 @@ export default function CartPage() {
 
       <div className='p-4'>
         <Button
+          data-testid='checkout-button'
           className='w-full mt-6'
           size='lg'
           onClick={placeOrder}

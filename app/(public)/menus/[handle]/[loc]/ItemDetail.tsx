@@ -66,13 +66,15 @@ export default function ItemDetail({ item, handle }: { item: NormalizedItem; han
     <div className='p-4 max-w-md mx-auto space-y-4'>
       <header className='sticky top-0 bg-white z-10'>
         <div className='flex items-center p-4'>
-          <Link href={`/menus/${handle}/${location}`} className='mr-4'>
+          <Link data-testid='back-button' href={`/menus/${handle}/${location}`} className='mr-4'>
             <ChevronLeft className='h-6 w-6' />
           </Link>
           <h1 className='text-xl font-bold'>Add To Order</h1>
         </div>
       </header>
-      <h1 className='text-2xl font-bold'>{item.customName || item.name}</h1>
+      <h1 data-testid='item-name' className='text-2xl font-bold'>
+        {item.customName || item.name}
+      </h1>
       {merchant?.displayImages && (
         <div className='w-16 h-16 relative mr-3'>
           {item && item.image && (
@@ -122,7 +124,7 @@ export default function ItemDetail({ item, handle }: { item: NormalizedItem; han
         <span className='text-xl font-bold'>${calculateTotal().toFixed(2)}</span>
       </div>
 
-      <Button className='w-full' onClick={handleAddToCart}>
+      <Button data-testid='add-to-cart' className='w-full' onClick={handleAddToCart}>
         Add to Cart
       </Button>
     </div>

@@ -30,8 +30,8 @@ export default function MenuDisplay() {
             </div>
           ) : (
             items.map((item) => (
-              <Link key={item.id} href={`${location}/item/${item.id}`}>
-                <Card className='overflow-hidden'>
+              <Link data-testid='item-link' key={item.id} href={`${location}/item/${item.id}`}>
+                <Card data-testid='menu-item' className='overflow-hidden'>
                   <div className='flex h-24'>
                     {merchant?.displayImages && (
                       <div className='w-1/4 relative'>
