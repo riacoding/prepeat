@@ -181,6 +181,7 @@ backend.webhookProcessor.addEnvironment('SQS_DLQ_URL', squareWebhook.squareDLQUR
 backend.webhookProcessor.addEnvironment('ORDERS_TABLE', ordersTable.tableName)
 backend.webhookProcessor.addEnvironment('IDEMPOTENCY_TABLE', squareWebhook.idempotencyTable.tableName)
 backend.squareAuth.addEnvironment('APP_BASE_URL', APP_BASE_URL)
+backend.squareAuth.addEnvironment('ENV_NAME', ENV_NAME)
 backend.twilioInbound.addEnvironment('APP_BASE_URL', APP_BASE_URL)
 
 squareWebhook.squareTopic.grantPublish(backend.webhook.resources.lambda)
