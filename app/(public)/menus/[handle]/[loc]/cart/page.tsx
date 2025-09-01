@@ -191,7 +191,7 @@ export default function CartPage() {
               </div>
 
               <div className='flex justify-between'>
-                <span>{`Tax ${merchant?.taxRate}%`}</span>
+                <span>{`Tax ${merchant?.taxRate || 0}%`}</span>
                 <span>
                   <CurrencyDisplay value={cartTax} />
                 </span>
