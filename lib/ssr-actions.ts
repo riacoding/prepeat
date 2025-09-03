@@ -1183,8 +1183,8 @@ export async function subscribeEmailAction(_prevState: ActionState, formData: Fo
   } catch (err: any) {
     const msg = String(err?.errors?.[0]?.message ?? err?.message ?? '')
     // Treat duplicates as success (idempotent UX)
-    if (msg.includes('already exists') || msg.includes('ConditionalCheckFailed')) {
-      return { ok: true, message: 'You’re on the list. Thanks!' }
+    if (msg.includes('already exists') || msg.includes('The conditional request failed')) {
+      return { ok: true, message: 'You’re already on the list. Thanks!' }
     }
     console.error('subscribeEmail error:', err)
     return { ok: false, message: 'Something went wrong. Please try again.' }
