@@ -67,7 +67,7 @@ export default function AllDayList({ orders }: AllDayListProps) {
     <div className='h-full flex flex-col'>
       <div className='px-4 py-2 border-b'>
         <h2 className='text-lg font-semibold'>All Day — Totals by Item</h2>
-        <p className='text-xs text-muted-foreground'>Aggregated QTY for all in-progress (PROPOSED) orders.</p>
+        <p className='text-xs text-muted-foreground'>Aggregated QTY for all in-progress orders.</p>
       </div>
 
       <div className='flex-1 overflow-y-auto'>
