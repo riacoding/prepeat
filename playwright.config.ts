@@ -6,6 +6,7 @@ export default defineConfig({
   timeout: 30000,
   retries: 1,
   reporter: [['list'], ['html']],
+  workers: 10,
   use: {
     baseURL: process.env.E2E_BASE_URL ?? 'http://localhost:3000',
     headless: true,

@@ -2,6 +2,8 @@
 import { test, expect } from '@playwright/test'
 import { goToMenu, openFirstItemDetail, addToCartOnDetail, openCart, HANDLE, DEMO_LOC } from '../helpers/menu'
 
+test.use({ storageState: { cookies: [], origins: [] } })
+
 test('demo: select item then add to cart', async ({ page }) => {
   await goToMenu(page, HANDLE, DEMO_LOC)
   await openFirstItemDetail(page)

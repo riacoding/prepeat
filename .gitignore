@@ -36,6 +36,8 @@ amplifyconfiguration*
 env.json
 scratch.txt
 
+test-results/*
+**/.last-run.json
 
 coverage/
 playwright-report/
