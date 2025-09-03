@@ -81,13 +81,19 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-      <footer className='px-6 py-16 text-center bg-gray-100'>
-        <h3 className='text-xl font-semibold mb-6'>Stay informed as we grow</h3>
-        <p className='text-gray-600 mb-6 max-w-xl mx-auto leading-relaxed'>
-          Join the Prepeat mailing list to get updates on new features, launch news, and early access offers.
-        </p>
+      <footer className='px-6 py-20 bg-gray-50'>
+        <div className='max-w-3xl mx-auto rounded-2xl border border-gray-200 bg-white shadow-sm p-8 text-center'>
+          <h3 className='text-2xl font-semibold'>Be the first to know</h3>
+          <p className='text-gray-600 mt-3'>
+            Join the Prepeat mailing list for launch updates, new features, and early access offers.
+          </p>
 
-        <EmailCapture placement='footer' variant='inline' />
+          <div className='mt-6'>
+            <EmailCapture placement='footer' variant='inline' />
+          </div>
+
+          <p className='mt-3 text-xs text-gray-500'>No spam. Unsubscribe anytime.</p>
+        </div>
       </footer>
     </main>
   )

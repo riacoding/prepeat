@@ -12,7 +12,7 @@ export type UpdateMerchantInput = Schema['Merchant']['updateType']
 export type SafeMenuItem = RemoveFunctions<Schema['MenuItem']['type']>
 export type User = Schema['User']['type']
 
-export type SortOption = 'Newest' | 'Oldest'
+export type SortOption = 'Newest' | 'Oldest' | 'All Day'
 
 export type ActionState = { ok: boolean; message: string }
 

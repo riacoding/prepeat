@@ -3,7 +3,6 @@
 import * as React from 'react'
 import { useActionState, useEffect, useState } from 'react'
 import { subscribeEmailAction } from '@/lib/ssr-actions'
-import { Button } from '@/components/ui/button'
 import clsx from 'clsx'
 
 type Placement = 'homepage_hero' | 'footer' | 'modal'
@@ -25,12 +24,13 @@ export default function EmailCapture({
   variant = 'inline',
   className,
   inputClassName,
-  buttonLabel = 'Join the List',
+  buttonLabel = 'Join the list',
   successMessage = 'You’re on the list. Thanks!',
 }: Props) {
   const [state, formAction] = useActionState(subscribeEmailAction, initialState)
   const [url, setUrl] = useState('')
   const [utm, setUtm] = useState<{ source?: string; medium?: string; campaign?: string }>({})
+  const [submitting, setSubmitting] = useState(false)
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -44,17 +44,30 @@ export default function EmailCapture({
     }
   }, [])
 
+  // when server action returns, stop "Joining…" state
+  useEffect(() => {
+    if (state.ok || state.message) setSubmitting(false)
+  }, [state.ok, state.message])
+
   const stacked = variant === 'stacked'
 
   return (
-    <form action={formAction} className={clsx('w-full', className)} noValidate>
-      {/* Honeypot (bot trap) */}
+    <form
+      action={(fd) => {
+        setSubmitting(true)
+        // fire-and-forget; state will update when action resolves
+        formAction(fd)
+      }}
+      className={clsx('w-full', className)}
+      noValidate
+    >
+      {/* Honeypot */}
       <div className='hidden' aria-hidden='true'>
         <label htmlFor='website'>Website</label>
         <input id='website' name='website' type='text' tabIndex={-1} autoComplete='off' />
       </div>
 
-      {/* Hidden context inputs */}
+      {/* Hidden context */}
       <input type='hidden' name='placement' value={placement} />
       <input type='hidden' name='url' value={url} />
       <input type='hidden' name='utm_source' value={utm.source ?? ''} />
@@ -74,14 +87,16 @@ export default function EmailCapture({
           placeholder='you@example.com'
           required
           className={clsx('px-4 py-3 rounded-xl border border-gray-300 w-full sm:w-64', inputClassName)}
+          disabled={submitting || state.ok}
         />
-        <Button
+
+        <button
           type='submit'
-          className='bg-prepeat-orange text-white font-medium px-6 py-3 rounded-xl hover:bg-orange-600 transition'
-          disabled={state.ok}
+          className='bg-prepeat-orange text-white font-medium px-6 py-3 rounded-xl hover:bg-orange-600 transition disabled:opacity-60 disabled:cursor-not-allowed'
+          disabled={submitting || state.ok}
         >
-          {state.ok ? 'Subscribed' : buttonLabel}
-        </Button>
+          {state.ok ? 'Subscribed' : submitting ? 'Joining…' : buttonLabel}
+        </button>
       </div>
 
       <p
@@ -90,6 +105,7 @@ export default function EmailCapture({
           state.ok ? 'text-green-700' : state.message ? 'text-red-600' : 'text-gray-500'
         )}
         role='status'
+        aria-live='polite'
       >
         {state.ok ? successMessage : state.message || ''}
       </p>

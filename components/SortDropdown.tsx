@@ -11,6 +11,7 @@ const SortDropdown = ({ sort, setSort }: { sort: SortOption; setSort: (value: So
       >
         <option value='Newest'>Newest</option>
         <option value='Oldest'>Oldest</option>
+        <option value='All Day'>All Day</option>
       </select>
     </label>
   )

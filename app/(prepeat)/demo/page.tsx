@@ -1,4 +1,5 @@
 'use client'
+import AllDayList from '@/components/AllDayList'
 import { usePublicMerchant } from '@/components/MerchantPublicContext'
 import OrderCard from '@/components/OrderCard'
 import SortDropdown from '@/components/SortDropdown'
@@ -16,9 +17,11 @@ export default function DemoPage() {
   const demoLocationId = process.env.NEXT_PUBLIC_DEMO_LOCATION_ID!
   const merchant = usePublicMerchant()
   const [locationId, setLocationId] = useState(demoLocationId)
-  const [sort, setSort] = useState<SortOption>('Newest')
+  const [sort, setSort] = useState<SortOption>('Oldest')
   const { orders = [], newOrderIds } = useDemoOrders(locationId, sort)
   const { mutate: markPrepared } = useMarkDemoPrepared()
+
+  const isAllDay = sort === 'All Day'
 
   //console.log('DemoPage', locationId, merchant, orders, isAuth())
   return (
@@ -37,26 +40,31 @@ export default function DemoPage() {
           KDS below.
         </p>
         <p className='text-sm text-gray-400'>Standard messaging rates may apply.</p>
-        <div>
+        {/* <div>
           {orders &&
             orders.map((o) => {
               return <p key={o.id}>{o.id}</p>
             })}
-        </div>
+        </div> */}
       </div>
 
-      <div className='space-y-4 bg-orange-50 border border-[#FFB74D] rounded-sm p-5 md:min-w-[1355px] min-h-[450px]'>
+      <div className='space-y-4 bg-orange-50 border border-[#FFB74D] rounded-sm p-3 md:min-w-[1355px] min-h-[450px]'>
         <h2 className='text-2xl font-semibold text-center text-[#2E7D32] mb-4'>Live Kitchen KDS View</h2>
         <SortDropdown sort={sort} setSort={setSort} />
         {orders && orders.length === 0 && <p className='text-center'>No Active Orders</p>}
-        <div className='grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 px-4'>
-          {orders && orders.length > 0
-            ? orders?.map((order) => {
-                return (
-                  <OrderCard key={order.id} order={order} newOrderIds={newOrderIds} handlePrepared={markPrepared} />
-                )
-              })
-            : null}
+        <div className='grid grid-cols-12 gap-4 '>
+          {isAllDay ? (
+            <div className='col-span-12 h-full'>
+              <AllDayList orders={orders ?? []} />
+            </div>
+          ) : (
+            // your existing grid of OrderCard(s)
+            <div className='col-span-12 grid md:grid-cols-2 lg:grid-cols-3 gap-4 auto-rows-fr'>
+              {(orders ?? []).map((o) => (
+                <OrderCard key={o.id} order={o} newOrderIds={newOrderIds} handlePrepared={markPrepared} />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
