@@ -17,6 +17,11 @@ import { SquareWebhookStack } from './custom/webhookqueue/resource'
 import { squareAuth } from './functions/getSquareAuth/resource'
 import { demoNotifyPhone } from './functions/DemoNotifyPhone/resource'
 import { qr2PDF } from './functions/Qr2PDF/resource'
+import { deviceRegister } from './functions/deviceRegister/resource'
+import { deviceHeartbeat } from './functions/deviceHeartbeat/resource'
+import { deviceGetJobs } from './functions/deviceGetJobs/resource'
+import { deviceAckJob } from './functions/deviceAckJob/resource'
+
 import branchName from 'current-git-branch'
 import { AttributeType, BillingMode, Table } from 'aws-cdk-lib/aws-dynamodb'
 import * as iam from 'aws-cdk-lib/aws-iam'
@@ -47,7 +52,12 @@ const backend = defineBackend({
   squareAuth,
   demoNotifyPhone,
   qr2PDF,
+  deviceRegister,
+  deviceHeartbeat,
+  deviceGetJobs,
+  deviceAckJob,
 })
+
 const environment = process.env.ENVIRONMENT ?? 'dev'
 const ordersTable = backend.data.resources.tables['Order']
 const { cfnResources } = backend.data.resources
@@ -126,11 +136,109 @@ const apiStack = Stack.of(backend.webhook.resources.lambda.stack)
 const httpApi = new HttpApi(apiStack, 'SquareWebhookApi', {
   apiName: `prepeat-webhook-api-${ENV_NAME}`,
   corsPreflight: {
-    allowMethods: [CorsHttpMethod.POST, CorsHttpMethod.OPTIONS],
+    allowMethods: [CorsHttpMethod.POST, CorsHttpMethod.GET, CorsHttpMethod.OPTIONS],
     allowOrigins: ['*'],
     allowHeaders: ['*'],
   },
   createDefaultStage: true,
+})
+
+// === Device feature: reuse existing API, import Amplify tables ===
+const deviceStack = backend.createStack(`DeviceStack-${ENV_NAME}`)
+
+const deviceTable = backend.data.resources.tables['Device']
+const enrollCodeTable = backend.data.resources.tables['EnrollmentCode']
+const deviceJobTable = backend.data.resources.tables['DeviceJob']
+
+// Locked-down plaintext API keys table
+const deviceSecretsTable = new Table(deviceStack, 'DeviceSecrets', {
+  tableName: `${ENV_NAME}-DeviceSecrets`,
+  partitionKey: { name: 'deviceId', type: AttributeType.STRING },
+  billingMode: BillingMode.PAY_PER_REQUEST,
+  timeToLiveAttribute: undefined, // not needed now; add later if you want rotation TTL
+  removalPolicy: RemovalPolicy.RETAIN, // safe default
+})
+
+// Pass env to the four Lambdas
+backend.deviceRegister.addEnvironment('ENVIRONMENT', ENV_NAME)
+backend.deviceRegister.addEnvironment('DEVICE_TABLE', deviceTable.tableName)
+backend.deviceRegister.addEnvironment('ENROLL_TABLE', enrollCodeTable.tableName)
+backend.deviceRegister.addEnvironment('DEVICE_SECRETS_TABLE', deviceSecretsTable.tableName)
+// Optional: pepper secret ARN if you want it now
+// if (process.env.PEPPER_SECRET_ARN) {
+//   backend.deviceRegister.addEnvironment('PEPPER_SECRET_ARN', process.env.PEPPER_SECRET_ARN!)
+// }
+
+backend.deviceHeartbeat.addEnvironment('ENVIRONMENT', ENV_NAME)
+backend.deviceHeartbeat.addEnvironment('DEVICE_TABLE', deviceTable.tableName)
+backend.deviceHeartbeat.addEnvironment('DEVICE_SECRETS_TABLE', deviceSecretsTable.tableName)
+
+backend.deviceGetJobs.addEnvironment('ENVIRONMENT', ENV_NAME)
+backend.deviceGetJobs.addEnvironment('DEVICE_JOB_TABLE', deviceJobTable.tableName)
+backend.deviceGetJobs.addEnvironment('DEVICE_SECRETS_TABLE', deviceSecretsTable.tableName)
+backend.deviceGetJobs.addEnvironment('DEVICE_TABLE', deviceTable.tableName)
+
+backend.deviceAckJob.addEnvironment('ENVIRONMENT', ENV_NAME)
+backend.deviceAckJob.addEnvironment('DEVICE_JOB_TABLE', deviceJobTable.tableName)
+
+// IAM (least privilege)
+deviceSecretsTable.grantReadWriteData(backend.deviceRegister.resources.lambda)
+
+deviceSecretsTable.grantReadData(backend.deviceHeartbeat.resources.lambda)
+deviceSecretsTable.grantReadData(backend.deviceGetJobs.resources.lambda)
+
+deviceTable.grantReadWriteData(backend.deviceRegister.resources.lambda)
+deviceTable.grantReadWriteData(backend.deviceHeartbeat.resources.lambda) // to update lastSeenAt
+deviceTable.grantReadData(backend.deviceGetJobs.resources.lambda)
+
+enrollCodeTable.grantReadWriteData(backend.deviceRegister.resources.lambda)
+
+deviceJobTable.grantReadWriteData(backend.deviceGetJobs.resources.lambda)
+deviceJobTable.grantReadWriteData(backend.deviceAckJob.resources.lambda)
+
+// (Optional) let deviceRegister read pepper from Secrets Manager
+// if (process.env.PEPPER_SECRET_ARN) {
+//   backend.deviceRegister.resources.lambda.addToRolePolicy(
+//     new iam.PolicyStatement({
+//       actions: ['secretsmanager:GetSecretValue'],
+//       resources: [process.env.PEPPER_SECRET_ARN],
+//     })
+//   )
+// }
+
+// === Add routes to the SAME HttpApi you already created ===
+const registerIntegration = new HttpLambdaIntegration(
+  'RegisterDeviceIntegration',
+  backend.deviceRegister.resources.lambda
+)
+const heartbeatIntegration = new HttpLambdaIntegration(
+  'DeviceHeartbeatIntegration',
+  backend.deviceHeartbeat.resources.lambda
+)
+const getJobsIntegration = new HttpLambdaIntegration('GetDeviceJobsIntegration', backend.deviceGetJobs.resources.lambda)
+const ackJobIntegration = new HttpLambdaIntegration('AckDeviceJobIntegration', backend.deviceAckJob.resources.lambda)
+
+// CORS tweak: include GET since /deviceJobs uses GET
+// (If you keep the existing CORS block, just add GET to allowMethods.)
+httpApi.addRoutes({
+  path: '/register',
+  methods: [HttpMethod.POST, HttpMethod.OPTIONS],
+  integration: registerIntegration,
+})
+httpApi.addRoutes({
+  path: '/heartbeat',
+  methods: [HttpMethod.POST, HttpMethod.OPTIONS],
+  integration: heartbeatIntegration,
+})
+httpApi.addRoutes({
+  path: '/deviceJobs',
+  methods: [HttpMethod.GET, HttpMethod.OPTIONS],
+  integration: getJobsIntegration,
+})
+httpApi.addRoutes({
+  path: '/deviceJobs/ack',
+  methods: [HttpMethod.POST, HttpMethod.OPTIONS],
+  integration: ackJobIntegration,
 })
 
 const webhookIntegration = new HttpLambdaIntegration('SquareWebhookIntegration', backend.webhook.resources.lambda)
@@ -170,6 +278,8 @@ backend.addOutput({
   },
 })
 
+new CfnOutput(deviceStack, 'DeviceSecretsTableName', { value: deviceSecretsTable.tableName })
+
 const counterTable = backend.data.resources.tables['TicketCounter']
 const userPool = backend.auth.resources.userPool as UserPool
 
@@ -193,4 +303,4 @@ backend.counter.resources.lambda.addToRolePolicy(
   })
 )
 
-backend.data.resources.cfnResources.cfnGraphqlApi.name = 'PizzaMenu'
+backend.data.resources.cfnResources.cfnGraphqlApi.name = `prepeat-${ENV_NAME}`
