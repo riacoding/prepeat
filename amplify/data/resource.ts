@@ -6,6 +6,10 @@ import { postConfirmation } from '../auth/postConfirmation/resource'
 import { twilioInbound } from '../functions/twilioInbound/resource'
 import { demoNotifyPhone } from '../functions/DemoNotifyPhone/resource'
 
+const CodeStatus = a.enum(['NEW', 'RESERVED', 'USED', 'EXPIRED'])
+const DeviceStatus = a.enum(['ACTIVE', 'SUSPENDED', 'DECOMMISSIONED'])
+const JobStatus = a.enum(['QUEUED', 'INFLIGHT', 'ACKED', 'FAILED'])
+
 const schema = a
   .schema({
     Consent: a.customType({
@@ -43,6 +47,57 @@ const schema = a
       level: a.enum(['free', 'basic', 'premium']),
       startDate: a.date(),
     }),
+    EnrollmentCode: a
+      .model({
+        codeHash: a.string().required(), // sha256(normalizedCode + PEPPER)
+        vendorId: a.string().required(),
+        status: CodeStatus,
+        expiresAt: a.integer(),
+        maxUses: a.integer().default(1),
+        usedCount: a.integer().default(0),
+        reservedAt: a.datetime(),
+        usedAt: a.datetime(),
+        createdBy: a.string(),
+      })
+      // Use codeHash as the model ID to make lookup simple/atomic.
+      .identifier(['codeHash'])
+      .secondaryIndexes((index) => [index('vendorId')])
+      .authorization((allow) => [allow.group('admins').to(['create', 'read', 'update', 'delete'])]),
+    Device: a
+      .model({
+        id: a.id(), // deviceId (ulid)
+        vendorId: a.string().required(),
+        name: a.string(),
+        status: DeviceStatus,
+        lastSeenAt: a.datetime(),
+        lastPrintAt: a.datetime(),
+        version: a.string().default('v0'),
+        pubKeyAlg: a.string().default('ed25519'),
+        pubKey: a.string(), // base64/JWK public only
+        apiKeyHash: a.string(), // sha256(apiKey + PEPPER)
+      })
+      .secondaryIndexes((index) => [index('vendorId')])
+      .authorization((allow) => [allow.group('admins').to(['create', 'read', 'update', 'delete'])]),
+    DeviceJob: a
+      .model({
+        id: a.id(), // ULID jobId
+        deviceId: a.string().required(),
+        createdAt: a.datetime().required(),
+        expiresAt: a.integer(),
+        status: JobStatus,
+        payload: a.json().required(), // { type:'ZPL', content:'...' }
+        error: a.string(),
+        // For the simple “no-lease v1”, we’ll just flip INFLIGHT and requeue on timeout.
+        inflightAt: a.datetime(), // when handed to device
+        // Optional helpers
+        dedupeKey: a.string(), // e.g., order-123
+        vendorId: a.string(), // denormalized for dashboards
+      })
+      .secondaryIndexes((index) => [
+        index('vendorId').sortKeys(['status', 'createdAt']),
+        index('deviceId').sortKeys(['createdAt']),
+      ])
+      .authorization((allow) => [allow.group('admins').to(['create', 'read', 'update', 'delete'])]),
     Subscriber: a
       .model({
         // Use lowercased email as the PRIMARY KEY (id). Pass it explicitly on create.
