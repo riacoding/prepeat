@@ -145,19 +145,42 @@ const httpApi = new HttpApi(apiStack, 'SquareWebhookApi', {
 
 // === Device feature: reuse existing API, import Amplify tables ===
 const deviceStack = backend.createStack(`DeviceStack-${ENV_NAME}`)
+const deviceSecretsStack = backend.createStack(`DeviceSecrets-${ENV_NAME}`)
 
 const deviceTable = backend.data.resources.tables['Device']
 const enrollCodeTable = backend.data.resources.tables['EnrollmentCode']
 const deviceJobTable = backend.data.resources.tables['DeviceJob']
 
 // Locked-down plaintext API keys table
-const deviceSecretsTable = new Table(deviceStack, 'DeviceSecrets', {
+const deviceSecretsTable = new Table(deviceSecretsStack, 'DeviceSecrets', {
   tableName: `${ENV_NAME}-DeviceSecrets`,
   partitionKey: { name: 'deviceId', type: AttributeType.STRING },
   billingMode: BillingMode.PAY_PER_REQUEST,
   timeToLiveAttribute: undefined, // not needed now; add later if you want rotation TTL
   removalPolicy: RemovalPolicy.RETAIN, // safe default
 })
+
+for (const fn of [
+  backend.deviceRegister.resources.lambda,
+  backend.deviceHeartbeat.resources.lambda,
+  backend.deviceGetJobs.resources.lambda,
+  backend.deviceAckJob.resources.lambda,
+]) {
+  // Tailor actions per fn; this is an example:
+  fn.addToRolePolicy(
+    new iam.PolicyStatement({
+      actions: [
+        'dynamodb:GetItem',
+        'dynamodb:PutItem',
+        'dynamodb:UpdateItem',
+        'dynamodb:DeleteItem',
+        'dynamodb:Query',
+        'dynamodb:Scan',
+      ],
+      resources: [deviceSecretsTable.tableArn],
+    })
+  )
+}
 
 // Pass env to the four Lambdas
 backend.deviceRegister.addEnvironment('ENVIRONMENT', ENV_NAME)
@@ -180,12 +203,6 @@ backend.deviceGetJobs.addEnvironment('DEVICE_TABLE', deviceTable.tableName)
 
 backend.deviceAckJob.addEnvironment('ENVIRONMENT', ENV_NAME)
 backend.deviceAckJob.addEnvironment('DEVICE_JOB_TABLE', deviceJobTable.tableName)
-
-// IAM (least privilege)
-deviceSecretsTable.grantReadWriteData(backend.deviceRegister.resources.lambda)
-
-deviceSecretsTable.grantReadData(backend.deviceHeartbeat.resources.lambda)
-deviceSecretsTable.grantReadData(backend.deviceGetJobs.resources.lambda)
 
 deviceTable.grantReadWriteData(backend.deviceRegister.resources.lambda)
 deviceTable.grantReadWriteData(backend.deviceHeartbeat.resources.lambda) // to update lastSeenAt
@@ -278,7 +295,7 @@ backend.addOutput({
   },
 })
 
-new CfnOutput(deviceStack, 'DeviceSecretsTableName', { value: deviceSecretsTable.tableName })
+new CfnOutput(deviceSecretsStack, 'DeviceSecretsTableName', { value: deviceSecretsTable.tableName })
 
 const counterTable = backend.data.resources.tables['TicketCounter']
 const userPool = backend.auth.resources.userPool as UserPool
