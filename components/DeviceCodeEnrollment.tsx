@@ -3,7 +3,7 @@ import { Button } from './ui/button'
 
 export default function DeviceCodeEnrollment({ merchantId, createdBy }: { merchantId: string; createdBy: string }) {
   const [loading, setLoading] = useState(false)
-  const [res, setRes] = useState<null | { codeHash: string; merchantId: string; expiresAt: string }>(null)
+  const [res, setRes] = useState<null | { codeHash: string; merchantId: string; expiresAt: number }>(null)
   const [err, setErr] = useState<string | null>(null)
 
   async function requestCode() {
@@ -44,7 +44,7 @@ export default function DeviceCodeEnrollment({ merchantId, createdBy }: { mercha
               Copy
             </button>
           </div>
-          <div className='mt-2 text-xs text-gray-500'>Expires: {new Date(res.expiresAt).toLocaleString()}</div>
+          <div className='mt-2 text-xs text-gray-500'>Expires: {new Date(res.expiresAt * 1000).toLocaleString()}</div>
         </div>
       )}
     </div>
