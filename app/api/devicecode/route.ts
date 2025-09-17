@@ -18,6 +18,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Missing createdBy' }, { status: 400 })
   }
 
+  console.log('expiresAt', new Date(expiresAt(new Date(), 15)).getTime())
+
   try {
     const { data: deviceCode, errors } = await cookieBasedClient.models.EnrollmentCode.create({
       codeHash: generateCode(),
