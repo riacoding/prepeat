@@ -105,11 +105,11 @@ export default function DeviceCodeEnrollment({ merchantId, createdBy }: Props) {
   }
 
   // If there is a code but it expires, let users request a fresh one without reloading
-  const expired = code ? Math.floor(Date.now() / 1000) >= code.expiresAt : false
+  const expired = code ? Math.floor(Date.now() / 1000) >= Number(code.expiresAt) : false
 
   return (
     <div className='space-y-4'>
-      <h3 className='text-lg font-semibold'>Device Enrollment Code</h3>
+      <h3 className='text-lg font-semibold'>Device Code</h3>
 
       {fetching && <div className='text-sm text-gray-500'>Checking for active code…</div>}
 

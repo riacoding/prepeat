@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
   try {
     const rs = await cookieBasedClient.models.EnrollmentCode.listEnrollmentCodeByMerchantId(
       { merchantId },
-      { limit: 5 }
+      { limit: 5, filter: { status: { eq: 'RESERVED' } } }
     )
 
     const sorted = (rs?.data ?? []).sort((a, b) => {
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
     // 1) Try to reuse an existing non-expired RESERVED code
     const existing = await cookieBasedClient.models.EnrollmentCode.listEnrollmentCodeByMerchantId(
       { merchantId },
-      { limit: 5 }
+      { limit: 5, filter: { status: { eq: 'RESERVED' } } }
     )
 
     if (existing?.data?.length) {
