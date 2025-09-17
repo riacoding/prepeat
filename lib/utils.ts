@@ -20,6 +20,9 @@ export function generateCode(): string {
 }
 
 // expiresAt.ts
+export function expiresAt(input: number, minutes: number): number
+export function expiresAt(input: string, minutes: number): string
+export function expiresAt(input: Date, minutes: number): Date
 export function expiresAt(input: Date | string | number, minutes: number): Date | string | number {
   let base: Date
 
