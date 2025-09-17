@@ -19,6 +19,27 @@ export function generateCode(): string {
   return `${raw.slice(0, 4)}-${raw.slice(4, 8)}`
 }
 
+// expiresAt.ts
+export function expiresAt(input: Date | string | number, minutes: number): string {
+  let base: Date
+
+  if (input instanceof Date) {
+    base = input
+  } else if (typeof input === 'string') {
+    base = new Date(input)
+  } else if (typeof input === 'number') {
+    base = new Date(input)
+  } else {
+    throw new Error('Invalid input type')
+  }
+
+  // add minutes
+  const expires = new Date(base.getTime() + minutes * 60 * 1000)
+
+  // always return ISO8601 string
+  return expires.toISOString()
+}
+
 export function md5Hex(s: string) {
   return createHash('md5').update(s, 'utf8').digest('hex')
 }

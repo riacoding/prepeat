@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { Button } from './ui/button'
 
 export default function DeviceCodeEnrollment({ merchantId, createdBy }: { merchantId: string; createdBy: string }) {
   const [loading, setLoading] = useState(false)
@@ -26,15 +27,15 @@ export default function DeviceCodeEnrollment({ merchantId, createdBy }: { mercha
 
   return (
     <div className='space-y-3'>
-      <button onClick={requestCode} disabled={loading} className='btn btn-primary'>
+      <Button onClick={requestCode} disabled={loading} className='btn btn-primary'>
         {loading ? 'Requesting…' : 'Request enrollment code'}
-      </button>
+      </Button>
 
       {err && <div className='text-red-600 text-sm'>{err}</div>}
 
       {res && (
         <div className='rounded border p-3'>
-          <div className='text-xs text-gray-500'>Vendor</div>
+          <div className='text-xs text-gray-500'>Merchant</div>
           <div className='font-mono'>{res.merchantId}</div>
           <div className='mt-2 text-xs text-gray-500'>Code</div>
           <div className='flex items-center gap-2'>

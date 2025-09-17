@@ -2,7 +2,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { cookieBasedClient } from '@/util/amplify'
 import type { CodeStatus } from '@/types'
-import { generateCode } from '@/lib/utils'
+import { expiresAt, generateCode } from '@/lib/utils'
 
 const env = process.env
 
@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
       merchantId,
       status: 'RESERVED' as CodeStatus,
       reservedAt: new Date().toISOString(),
+      expiresAt: new Date(expiresAt(new Date(), 15)).getTime(),
       createdBy,
     })
 
@@ -34,7 +35,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({
       codeHash: deviceCode.codeHash,
       merchantId,
-      createdAt: deviceCode.createdAt,
+      expiresAt: deviceCode.expiresAt,
     })
   } catch (err) {
     console.error('Device Code error:', err)
