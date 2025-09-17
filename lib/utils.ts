@@ -20,24 +20,21 @@ export function generateCode(): string {
 }
 
 // expiresAt.ts
-export function expiresAt(input: Date | string | number, minutes: number): string {
+export function expiresAt(input: Date | string | number, minutes: number): Date | string | number {
   let base: Date
 
   if (input instanceof Date) {
     base = input
+    return new Date(base.getTime() + minutes * 60 * 1000)
   } else if (typeof input === 'string') {
     base = new Date(input)
+    return new Date(base.getTime() + minutes * 60 * 1000).toISOString()
   } else if (typeof input === 'number') {
     base = new Date(input)
+    return base.getTime() + minutes * 60 * 1000
   } else {
     throw new Error('Invalid input type')
   }
-
-  // add minutes
-  const expires = new Date(base.getTime() + minutes * 60 * 1000)
-
-  // always return ISO8601 string
-  return expires.toISOString()
 }
 
 export function md5Hex(s: string) {

@@ -25,7 +25,7 @@ export async function POST(req: NextRequest) {
       merchantId,
       status: 'RESERVED' as CodeStatus,
       reservedAt: new Date().toISOString(),
-      expiresAt: expiry,
+      expiresAt: expiresAt(Date.now(), 15) as number,
       createdBy,
     })
 
