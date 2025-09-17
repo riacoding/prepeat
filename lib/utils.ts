@@ -33,8 +33,8 @@ export function expiresAt(input: Date | string | number, minutes: number): Date 
     base = new Date(input)
     return new Date(base.getTime() + minutes * 60 * 1000).toISOString()
   } else if (typeof input === 'number') {
-    base = new Date(input)
-    return base.getTime() + minutes * 60 * 1000
+    // convert back to seconds (int)
+    return Math.floor((input + minutes * 60 * 1000) / 1000)
   } else {
     throw new Error('Invalid input type')
   }
