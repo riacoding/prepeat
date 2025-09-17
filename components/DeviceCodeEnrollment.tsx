@@ -68,6 +68,7 @@ export default function DeviceCodeEnrollment({ merchantId, createdBy }: Props) {
         })
         if (r.ok) {
           const j = (await r.json()) as RequestCodeResponse
+          console.log('code.expiresAt type:', typeof j.expiresAt, j.expiresAt)
           if (!ignore) setCode(j)
         } else if (r.status !== 404) {
           const j = await r.json().catch(() => ({}) as any)
