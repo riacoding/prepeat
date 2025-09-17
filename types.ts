@@ -17,6 +17,13 @@ export type CodeStatus = 'NEW' | 'RESERVED' | 'USED' | 'EXPIRED'
 
 export type ActionState = { ok: boolean; message: string }
 
+export type RequestCodeResponse = {
+  codeHash: string
+  merchantId: string
+  expiresAt: number // epoch seconds
+  codeType: 'NEW' | 'EXISTING'
+}
+
 export type MenuInput = {
   id?: string
   name: string
