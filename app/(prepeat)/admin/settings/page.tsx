@@ -5,10 +5,10 @@ import { useMerchant } from '@/components/MerchantContext'
 import { useSafeAuthenticator } from '@/hooks/useSafeAuthenticator'
 import { updateMerchant } from '@/lib/ssr-actions'
 import { Switch } from '@/components/ui/switch'
-
 import React, { useEffect, useState } from 'react'
 import { StorageImage } from '@aws-amplify/ui-react-storage'
 import { Button } from '@/components/ui/button'
+import DeviceCodeEnrollment from '@/components/DeviceCodeEnrollment'
 
 type Props = {}
 
@@ -20,7 +20,9 @@ export default function Settings({}: Props) {
   const [refreshStatus, setRefreshStatus] = useState<'idle' | 'success' | 'error'>('idle')
 
   const { handle, id, s3ItemKey, displayImages: currentDisplayImages, taxRate } = useMerchant()
-  const { user, authStatus } = useSafeAuthenticator()
+  const { user, prepEatUser, authStatus } = useSafeAuthenticator()
+
+  const adminUser = `${prepEatUser?.firstname} ${prepEatUser?.lastname}`
 
   useEffect(() => {
     setMerchantLogo(s3ItemKey || '')
@@ -163,6 +165,7 @@ export default function Settings({}: Props) {
           {refreshStatus === 'success' && <span className='text-green-600 text-sm'>Token refreshed successfully</span>}
           {refreshStatus === 'error' && <span className='text-red-600 text-sm'>Failed to refresh token</span>}
         </div>
+        <DeviceCodeEnrollment merchantId={id} createdBy={adminUser} />
       </div>
     </div>
   )

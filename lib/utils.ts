@@ -3,8 +3,21 @@ import { clsx, type ClassValue } from 'clsx'
 import { format } from 'date-fns'
 import { createHash } from 'crypto'
 import { twMerge } from 'tailwind-merge'
+import { customAlphabet } from 'nanoid'
+
+// Crockford Base32 (no I,L,O,U)
+const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
+
+// 8 chars total → format as XXXX-XXXX
+const nano = customAlphabet(ALPHABET, 8)
 
 const locationId = process.env.NEXT_PUBLIC_LOCATION_ID
+
+/** Returns a code like ABCD-3JK7 */
+export function generateCode(): string {
+  const raw = nano().toUpperCase()
+  return `${raw.slice(0, 4)}-${raw.slice(4, 8)}`
+}
 
 export function md5Hex(s: string) {
   return createHash('md5').update(s, 'utf8').digest('hex')

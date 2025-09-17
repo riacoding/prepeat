@@ -13,6 +13,7 @@ export type SafeMenuItem = RemoveFunctions<Schema['MenuItem']['type']>
 export type User = Schema['User']['type']
 
 export type SortOption = 'Newest' | 'Oldest' | 'All Day'
+export type CodeStatus = 'NEW' | 'RESERVED' | 'USED' | 'EXPIRED'
 
 export type ActionState = { ok: boolean; message: string }
 

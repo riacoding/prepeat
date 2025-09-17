@@ -1,8 +1,8 @@
 import { useState } from 'react'
 
-export default function DeviceCodeEnrollment({ merchantId }: { merchantId: string }) {
+export default function DeviceCodeEnrollment({ merchantId, createdBy }: { merchantId: string; createdBy: string }) {
   const [loading, setLoading] = useState(false)
-  const [res, setRes] = useState<null | { code: string; merchantId: string; expiresAt: string }>(null)
+  const [res, setRes] = useState<null | { codeHash: string; merchantId: string; expiresAt: string }>(null)
   const [err, setErr] = useState<string | null>(null)
 
   async function requestCode() {
@@ -12,7 +12,7 @@ export default function DeviceCodeEnrollment({ merchantId }: { merchantId: strin
       const r = await fetch('/api/devicecode', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ merchantId }),
+        body: JSON.stringify({ merchantId, createdBy }),
       })
       if (!r.ok) throw new Error(`Request failed: ${r.status}`)
       const data = await r.json()
@@ -38,8 +38,8 @@ export default function DeviceCodeEnrollment({ merchantId }: { merchantId: strin
           <div className='font-mono'>{res.merchantId}</div>
           <div className='mt-2 text-xs text-gray-500'>Code</div>
           <div className='flex items-center gap-2'>
-            <code className='font-mono text-lg'>{res.code}</code>
-            <button onClick={() => navigator.clipboard.writeText(res.code)} className='btn btn-sm'>
+            <code className='font-mono text-lg'>{res.codeHash}</code>
+            <button onClick={() => navigator.clipboard.writeText(res.codeHash)} className='btn btn-sm'>
               Copy
             </button>
           </div>
