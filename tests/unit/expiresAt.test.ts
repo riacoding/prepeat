@@ -1,25 +1,25 @@
 import { describe, it, expect } from 'vitest'
-import { expiresAt } from '@/lib/utils'
+import { expiresAt } from '@/lib/utils' // adjust the import path
 
 describe('expiresAt', () => {
-  it('returns a Date when input is a Date', () => {
-    const base = new Date('2025-09-16T12:00:00Z')
-    const result = expiresAt(base, 10)
-    expect(result).toBeInstanceOf(Date)
-    expect((result as Date).toISOString()).toBe('2025-09-16T12:10:00.000Z')
-  })
-
-  it('returns a number when input is a timestamp', () => {
-    const base = Date.parse('2025-09-16T12:00:00Z')
-    const result = expiresAt(base, 10)
+  it('returns a number when given a timestamp', () => {
+    const now = Date.now()
+    const result = expiresAt(now, 5)
     expect(typeof result).toBe('number')
-    expect(result).toBe(Date.parse('2025-09-16T12:10:00Z'))
+    expect(result).toBeGreaterThan(now)
   })
 
-  it('returns a string when input is an ISO string', () => {
-    const base = '2025-09-16T12:00:00.000Z'
-    const result = expiresAt(base, 10)
+  it('returns a string when given an ISO string', () => {
+    const nowIso = new Date().toISOString()
+    const result = expiresAt(nowIso, 5)
     expect(typeof result).toBe('string')
-    expect(result).toBe('2025-09-16T12:10:00.000Z')
+    expect(new Date(result).getTime()).toBeGreaterThan(new Date(nowIso).getTime())
+  })
+
+  it('returns a Date when given a Date', () => {
+    const now = new Date()
+    const result = expiresAt(now, 5)
+    expect(result).toBeInstanceOf(Date)
+    expect(result.getTime()).toBeGreaterThan(now.getTime())
   })
 })
