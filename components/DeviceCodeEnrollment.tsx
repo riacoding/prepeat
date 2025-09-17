@@ -27,7 +27,7 @@ export default function DeviceCodeEnrollment({ merchantId, createdBy }: { mercha
 
   return (
     <div className='space-y-3'>
-      <Button onClick={requestCode} disabled={loading} className='btn btn-primary'>
+      <Button onClick={requestCode} disabled={loading || res !== null} className='btn btn-primary'>
         {loading ? 'Requesting…' : 'Request enrollment code'}
       </Button>
 

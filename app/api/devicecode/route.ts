@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
   }
 
   try {
-    const { data: deviceCode } = await cookieBasedClient.models.EnrollmentCode.create({
+    const { data: deviceCode, errors } = await cookieBasedClient.models.EnrollmentCode.create({
       codeHash: generateCode(),
       merchantId,
       status: 'RESERVED' as CodeStatus,
@@ -27,6 +27,12 @@ export async function POST(req: NextRequest) {
       expiresAt: new Date(expiresAt(new Date(), 15)).getTime(),
       createdBy,
     })
+
+    if (errors?.length) {
+      console.error('create device code errors:', errors)
+
+      throw new Error(errors.map((e) => e.message).join('; '))
+    }
 
     if (!deviceCode?.codeHash || !merchantId || !deviceCode.createdAt) {
       return NextResponse.json({ error: 'Error fetching device code' }, { status: 400 })
