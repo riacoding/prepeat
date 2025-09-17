@@ -17,7 +17,8 @@ export async function POST(req: NextRequest) {
   if (!createdBy || createdBy === '') {
     return NextResponse.json({ error: 'Missing createdBy' }, { status: 400 })
   }
-  const expiry = new Date(expiresAt(new Date(), 15)).getTime()
+  const expiry = expiresAt(Date.now(), 15)
+  console.log('expiry', expiry)
 
   try {
     const { data: deviceCode, errors } = await cookieBasedClient.models.EnrollmentCode.create({
