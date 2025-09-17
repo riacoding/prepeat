@@ -50,7 +50,7 @@ const schema = a
     EnrollmentCode: a
       .model({
         codeHash: a.string().required(), // sha256(normalizedCode + PEPPER)
-        vendorId: a.string().required(),
+        merchantId: a.string().required(),
         status: CodeStatus,
         expiresAt: a.integer(),
         maxUses: a.integer().default(1),
@@ -61,12 +61,12 @@ const schema = a
       })
       // Use codeHash as the model ID to make lookup simple/atomic.
       .identifier(['codeHash'])
-      .secondaryIndexes((index) => [index('vendorId')])
-      .authorization((allow) => [allow.group('admins').to(['create', 'read', 'update', 'delete'])]),
+      .secondaryIndexes((index) => [index('merchantId')])
+      .authorization((allow) => [allow.groups(['admins', 'vendor']).to(['create', 'read', 'update', 'delete'])]),
     Device: a
       .model({
         id: a.id(), // deviceId (ulid)
-        vendorId: a.string().required(),
+        merchantId: a.string().required(),
         name: a.string(),
         status: DeviceStatus,
         lastSeenAt: a.datetime(),
@@ -76,7 +76,7 @@ const schema = a
         pubKey: a.string(), // base64/JWK public only
         apiKeyHash: a.string(), // sha256(apiKey + PEPPER)
       })
-      .secondaryIndexes((index) => [index('vendorId')])
+      .secondaryIndexes((index) => [index('merchantId')])
       .authorization((allow) => [allow.group('admins').to(['create', 'read', 'update', 'delete'])]),
     DeviceJob: a
       .model({

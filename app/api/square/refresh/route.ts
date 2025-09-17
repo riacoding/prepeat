@@ -8,16 +8,12 @@ export async function POST(req: NextRequest) {
   const body = await req.json()
   const merchantId = body.merchantId
 
-  console.log('tokens', process.env.SQUARE_APPLICATION_ID, process.env.SQUARE_CLIENT_SECRET, env.SQUARE_ACCESS_TOKEN)
-
   if (!merchantId) {
     return NextResponse.json({ error: 'Missing merchantId' }, { status: 400 })
   }
 
   try {
     const { data: merchant } = await cookieBasedClient.models.Merchant.get({ id: merchantId })
-
-    console.log('merchant refresh', merchant?.refreshToken)
 
     if (!merchant || !merchant.refreshToken) {
       return NextResponse.json({ error: 'Merchant not found or missing refresh token' }, { status: 404 })
