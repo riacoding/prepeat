@@ -19,10 +19,21 @@ function formatHMS(totalSeconds: number) {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+function CodeSkeleton() {
+  return (
+    <div className='rounded-xl border p-4 animate-pulse' aria-busy='true' aria-live='polite'>
+      <div className='h-3 w-40 bg-gray-200 rounded mb-3' />
+      <div className='h-7 w-3/4 bg-gray-200 rounded mb-3' />
+      <div className='h-3 w-32 bg-gray-200 rounded' />
+    </div>
+  )
+}
+
 function CodeDisplay({ code }: { code: RequestCodeResponse }) {
   const [left, setLeft] = React.useState(() => secondsRemaining(code.expiresAt))
 
   React.useEffect(() => {
+    setLeft(secondsRemaining(code.expiresAt)) // sync on prop change
     const id = setInterval(() => setLeft(secondsRemaining(code.expiresAt)), 1000)
     return () => clearInterval(id)
   }, [code.expiresAt])
@@ -32,7 +43,7 @@ function CodeDisplay({ code }: { code: RequestCodeResponse }) {
   return (
     <div className='rounded-xl border p-4'>
       <div className='text-sm text-gray-500 mb-1'>
-        {code.codeType === 'EXISTING' ? 'Existing enrollment code' : 'New enrollment code'}
+        {code.codeType === 'EXISTING' ? 'Existing enrollment code' : 'New device code'}
       </div>
       <div className='font-mono text-2xl tracking-wide break-all'>{code.codeHash}</div>
       <div className='mt-2 text-sm'>
@@ -68,8 +79,7 @@ export default function DeviceCodeEnrollment({ merchantId, createdBy }: Props) {
         })
         if (r.ok) {
           const j = (await r.json()) as RequestCodeResponse
-          console.log('code.expiresAt type:', typeof j.expiresAt, j.expiresAt)
-          if (!ignore) setCode(j)
+          if (!ignore) setCode({ ...j, expiresAt: Number(j.expiresAt) })
         } else if (r.status !== 404) {
           const j = await r.json().catch(() => ({}) as any)
           if (!ignore) setErr(j?.error || `HTTP ${r.status}`)
@@ -97,7 +107,7 @@ export default function DeviceCodeEnrollment({ merchantId, createdBy }: Props) {
       })
       const j = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(j?.error || `HTTP ${r.status}`)
-      setCode(j as RequestCodeResponse)
+      setCode({ ...(j as RequestCodeResponse), expiresAt: Number((j as any).expiresAt) })
     } catch (e: any) {
       setErr(e?.message ?? 'Request failed')
     } finally {
@@ -112,7 +122,8 @@ export default function DeviceCodeEnrollment({ merchantId, createdBy }: Props) {
     <div className='space-y-4'>
       <h3 className='text-lg font-semibold'>Device Code</h3>
 
-      {fetching && <div className='text-sm text-gray-500'>Checking for active code…</div>}
+      {/* Skeleton while fetching to prevent layout shift */}
+      {fetching && <CodeSkeleton />}
 
       {err && <div className='rounded-md border border-red-300 bg-red-50 p-3 text-sm text-red-700'>{err}</div>}
 
