@@ -20,21 +20,23 @@ export function generateCode(): string {
 }
 
 // expiresAt.ts
+
 export function expiresAt(input: number, minutes: number): number
 export function expiresAt(input: string, minutes: number): string
 export function expiresAt(input: Date, minutes: number): Date
 export function expiresAt(input: Date | string | number, minutes: number): Date | string | number {
-  let base: Date
+  const addMs = minutes * 60 * 1000
 
   if (input instanceof Date) {
-    base = input
-    return new Date(base.getTime() + minutes * 60 * 1000)
+    return new Date(input.getTime() + addMs) // -> Date
   } else if (typeof input === 'string') {
-    base = new Date(input)
-    return new Date(base.getTime() + minutes * 60 * 1000).toISOString()
+    const base = new Date(input)
+    return new Date(base.getTime() + addMs).toISOString() // -> ISO string
   } else if (typeof input === 'number') {
-    // convert back to seconds (int)
-    return Math.floor((input + minutes * 60 * 1000) / 1000)
+    // input is epoch SECONDS → convert to ms, add, return seconds
+    const baseMs = input * 1000
+    const expMs = baseMs + addMs
+    return Math.floor(expMs / 1000) // -> epoch seconds (int)
   } else {
     throw new Error('Invalid input type')
   }

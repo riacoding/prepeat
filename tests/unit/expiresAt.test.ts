@@ -3,11 +3,11 @@ import { expiresAt } from '@/lib/utils' // adjust the import path
 
 describe('expiresAt', () => {
   it('returns epoch SECONDS (number) when given a timestamp (ms)', () => {
-    const nowMs = Date.now()
-    const result = expiresAt(nowMs, 5) // number → seconds
+    const nowSec = Math.floor(Date.now() / 1000)
+
+    const result = expiresAt(nowSec, 5) // number → seconds
     expect(typeof result).toBe('number')
-    // should be close to (now + 5m) in seconds
-    const expectedSec = Math.floor((nowMs + 5 * 60_000) / 1000)
+    const expectedSec = Math.floor(nowSec + 5 * 60)
     expect(result).toBe(expectedSec)
     // sanity: 10-digit seconds, not 13-digit ms
     expect(String(result).length).toBeGreaterThanOrEqual(10)
