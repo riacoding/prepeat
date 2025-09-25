@@ -91,10 +91,10 @@ const schema = a
         inflightAt: a.datetime(), // when handed to device
         // Optional helpers
         dedupeKey: a.string(), // e.g., order-123
-        vendorId: a.string(), // denormalized for dashboards
+        merchantId: a.string(), // denormalized for dashboards
       })
       .secondaryIndexes((index) => [
-        index('vendorId').sortKeys(['status', 'createdAt']),
+        index('merchantId').sortKeys(['status', 'createdAt']),
         index('deviceId').sortKeys(['createdAt']),
       ])
       .authorization((allow) => [allow.group('admins').to(['create', 'read', 'update', 'delete'])]),
