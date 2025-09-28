@@ -62,7 +62,7 @@ const schema = a
       // Use codeHash as the model ID to make lookup simple/atomic.
       .identifier(['codeHash'])
       .secondaryIndexes((index) => [index('merchantId')])
-      .authorization((allow) => [allow.groups(['admins', 'vendor']).to(['create', 'read', 'update', 'delete'])]),
+      .authorization((allow) => [allow.groups(['admin', 'vendor']).to(['create', 'read', 'update', 'delete'])]),
     Device: a
       .model({
         id: a.id(), // deviceId (ulid)
@@ -77,7 +77,7 @@ const schema = a
         apiKeyHash: a.string(), // sha256(apiKey + PEPPER)
       })
       .secondaryIndexes((index) => [index('merchantId')])
-      .authorization((allow) => [allow.group('admins').to(['create', 'read', 'update', 'delete'])]),
+      .authorization((allow) => [allow.group('admin').to(['create', 'read', 'update', 'delete'])]),
     DeviceJob: a
       .model({
         id: a.id(), // ULID jobId
@@ -97,7 +97,7 @@ const schema = a
         index('merchantId').sortKeys(['status', 'createdAt']),
         index('deviceId').sortKeys(['createdAt']),
       ])
-      .authorization((allow) => [allow.group('admins').to(['create', 'read', 'update', 'delete'])]),
+      .authorization((allow) => [allow.group('admin').to(['create', 'read', 'update', 'delete'])]),
     Subscriber: a
       .model({
         // Use lowercased email as the PRIMARY KEY (id). Pass it explicitly on create.

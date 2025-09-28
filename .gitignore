@@ -42,3 +42,6 @@ test-results/*
 coverage/
 playwright-report/
 *.lcov
+
+/app/.DS_Store
+/amplify/.DS_Store
