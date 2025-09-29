@@ -88,14 +88,16 @@ const schema = a
         payload: a.json().required(), // { type:'ZPL', content:'...' }
         error: a.string(),
         // For the simple “no-lease v1”, we’ll just flip INFLIGHT and requeue on timeout.
-        inflightAt: a.datetime(), // when handed to device
+        inflightAt: a.datetime(),
+        queuedAt: a.datetime(),
         // Optional helpers
         dedupeKey: a.string(), // e.g., order-123
         merchantId: a.string(), // denormalized for dashboards
       })
       .secondaryIndexes((index) => [
         index('merchantId').sortKeys(['status', 'createdAt']),
-        index('deviceId').sortKeys(['createdAt']),
+        index('deviceId').sortKeys(['queuedAt']),
+        index('deviceId').sortKeys(['inflightAt']),
       ])
       .authorization((allow) => [allow.group('admin').to(['create', 'read', 'update', 'delete'])]),
     Subscriber: a
