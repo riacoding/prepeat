@@ -2,24 +2,44 @@ import { NextRequest, NextResponse } from 'next/server'
 import { SquareClient, SquareEnvironment, Square } from 'square'
 import { cookieBasedClient } from '@/util/amplify'
 import jwt from 'jsonwebtoken'
+import { getAppSecret, upsertMerchantSecret } from './secrets-upsert'
+import { timingSafeEqual } from 'node:crypto' // <-- Node crypto
+import { Buffer } from 'node:buffer'
+
+export const runtime = 'nodejs'
+
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const ab = Buffer.from(a, 'utf8')
+  const bb = Buffer.from(b, 'utf8')
+  if (ab.length !== bb.length) return false
+  return timingSafeEqual(ab, bb)
+}
 
 const env = process.env
-console.log('SQUARE_APPLICATION_ID', env.SQUARE_APPLICATION_ID)
-console.log('SQUARE_SECRET', env.SQUARE_CLIENT_SECRET ? '✅ loaded' : '❌ MISSING')
 
 export async function GET(req: NextRequest) {
   const url = new URL(req.url)
   const code = url.searchParams.get('code')
-  const state = url.searchParams.get('state')
+  const queryState = url.searchParams.get('state') ?? ''
+  const cookieState = req.cookies.get('oauth_state')?.value ?? ''
 
   if (!code) {
     return NextResponse.json({ error: 'Missing authorization code' }, { status: 400 })
   }
 
+  // Byte-for-byte comparison
+  const match = queryState && cookieState && timingSafeEqualStr(queryState, cookieState)
+  if (!match) {
+    // optional: clear the cookie on failure
+    const res = NextResponse.redirect(`${process.env.NEXT_PUBLIC_BASE_URL}/onboarding/error`)
+    res.cookies.delete('oauth_state')
+    return res
+  }
+
   let prepEatMerchantId: string
 
   try {
-    const decoded = jwt.verify(state!, env.OAUTH_STATE_SECRET!) as { merchantId: string }
+    const decoded = jwt.verify(queryState!, env.OAUTH_STATE_SECRET!) as { merchantId: string }
     prepEatMerchantId = decoded.merchantId
   } catch (err) {
     console.error('Invalid or expired state token:', err)
@@ -35,15 +55,23 @@ export async function GET(req: NextRequest) {
     const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL}/square/callback`
     console.log('redirectUri', redirectUri)
 
+    const appSecret = await getAppSecret(env.Environment!)
+
+    if (!appSecret) {
+      console.error('Missing app secret')
+      return NextResponse.redirect(`${env.NEXT_PUBLIC_BASE_URL}/onboarding/error`)
+    }
+
     const tokenResult: Square.ObtainTokenResponse = await square.oAuth.obtainToken({
       code,
       clientId: env.SQUARE_APPLICATION_ID!,
-      clientSecret: process.env.SQUARE_CLIENT_SECRET,
+      clientSecret: appSecret.clientSecret,
       grantType: 'authorization_code',
       redirectUri: redirectUri,
     })
 
     const { accessToken, refreshToken, expiresAt, merchantId } = tokenResult
+
     const authedSquare = new SquareClient({
       environment: SquareEnvironment.Sandbox,
       token: accessToken!,
@@ -57,10 +85,26 @@ export async function GET(req: NextRequest) {
     const locationIds = activeLocations.map((loc) => loc.id!)
     console.log('Fetched location IDs:', locationIds)
 
+    if (!accessToken || !merchantId) {
+      console.error('Missing access token or refresh token or merchant ID')
+      return NextResponse.redirect(`${env.NEXT_PUBLIC_BASE_URL}/onboarding/error`)
+    }
+
+    // Set tokens in secrets Manager
+    const secretARN = await upsertMerchantSecret(
+      {
+        merchantId: merchantId,
+        accessToken: accessToken,
+        refreshToken: refreshToken,
+        squareEnv: env.SQUARE_ENV === 'production' ? 'production' : 'sandbox',
+        updatedAt: new Date().toISOString(),
+      },
+      env.Environment!
+    )
+
     await cookieBasedClient.models.Merchant.update({
       id: prepEatMerchantId,
-      accessToken,
-      refreshToken,
+      secretsArn: secretARN,
       tokenExpiresAt: expiresAt,
       tokenrefreshedAt: new Date().toISOString(),
       squareMerchantId: merchantId,
@@ -69,7 +113,10 @@ export async function GET(req: NextRequest) {
       isLinked: true,
     })
 
-    return NextResponse.redirect(`${env.NEXT_PUBLIC_BASE_URL}/admin/setup`)
+    const res = NextResponse.redirect(`${env.NEXT_PUBLIC_BASE_URL}/admin/setup`)
+    res.cookies.delete('oauth_state') // clears Path=/ cookie
+    //res.cookies.set('oauth_state', '', { path: '/', maxAge: 0 })   optionally clear it
+    return res
   } catch (err: any) {
     console.error('OAuth callback error', err)
     return NextResponse.redirect(`${env.NEXT_PUBLIC_BASE_URL}/onboarding/error`)

@@ -66,7 +66,7 @@ export const handler: SQSHandler = async (event, context) => {
         }
 
         const merchant = await m.timeIt('GetMerchantMs', () => getMerchant(merchant_id))
-        const squareClient = getSquareClient(merchant.accessToken)
+        const squareClient = await getSquareClient(merchant)
 
         const handlerFn = handlers[type]
         if (!handlerFn) {

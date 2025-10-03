@@ -41,6 +41,8 @@ const BRANCH = resolveBranch()
 const ENV_NAME =
   BRANCH === 'main' || BRANCH === 'prod' ? 'prod' : process.env.ENVIRONMENT === 'sandbox' ? 'sandbox' : 'dev' // fallback: use branch as-is
 
+const ACCOUNT_ID = process.env.CUSTOMER_ACCOUNTID
+const REGION = process.env.AWS_REGION
 const backend = defineBackend({
   auth,
   data,
@@ -62,6 +64,7 @@ const environment = process.env.ENVIRONMENT ?? 'dev'
 const ordersTable = backend.data.resources.tables['Order']
 const { cfnResources } = backend.data.resources
 const demoNotifyPhoneLambda = backend.demoNotifyPhone
+const webhookWorkerLambda = backend.webhookProcessor.resources.lambda
 
 cfnResources.amplifyDynamoDbTables['DemoOrder'].timeToLiveAttribute = {
   attributeName: 'expiresAt',
@@ -317,6 +320,13 @@ backend.counter.resources.lambda.addToRolePolicy(
   new PolicyStatement({
     actions: ['dynamodb:UpdateItem', 'dynamodb:GetItem'],
     resources: [counterTable.tableArn],
+  })
+)
+
+webhookWorkerLambda.addToRolePolicy(
+  new iam.PolicyStatement({
+    actions: ['secretsmanager:GetSecretValue'],
+    resources: [`arn:aws:secretsmanager:${REGION}:${ACCOUNT_ID}:secret:prepeat/${ENV_NAME}/square/merchant/*`],
   })
 )
 

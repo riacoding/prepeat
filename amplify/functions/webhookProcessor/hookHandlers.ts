@@ -1,29 +1,58 @@
-import { APIGatewayProxyEvent, APIGatewayProxyResult } from 'aws-lambda'
 import { randomUUID } from 'crypto'
 import { SquareClient, SquareEnvironment, Square } from 'square'
-import type { Handler } from 'aws-lambda'
 import type { Schema } from '../../data/resource'
 import { Amplify } from 'aws-amplify'
 import { generateClient } from 'aws-amplify/data'
 import { getAmplifyDataClientConfig } from '@aws-amplify/backend/function/runtime'
 import { env } from '$amplify/env/webhookProcessorHandler' // replace with your function name
 import { sanitizeBigInts } from './util'
-import { SquareFulfillmentUpdate, UpdateOrderParams } from './types'
+import { SquareFulfillmentUpdate, UpdateOrderParams, MerchantSecret } from './types'
+import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager'
+import { Buffer } from 'node:buffer'
 import twilio from 'twilio'
 
 const twilioClient = twilio(process.env.TWILIO_ACCOUNT_SID!, process.env.TWILIO_AUTH_TOKEN!)
 const TWILIO_FROM = process.env.TWILIO_FROM! // your Twilio number or messaging service SID
 const ORDER_SOURCE = 'PrepEat.io'
 
-const SQUARE_WEBHOOK_SECRET = process.env.SQUARE_WEBHOOK_SECRET!
-const WEBHOOK_URL = process.env.WEBHOOK_URL!
-
 //Amplify Client
 const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(env)
 Amplify.configure(resourceConfig, libraryOptions)
 const amplifyClient = generateClient<Schema>()
 
-export function getSquareClient(accessToken: string) {
+type Merchant = Schema['Merchant']['type']
+
+const sm = new SecretsManagerClient({})
+
+export async function getMerchantSecretByArn(secretArn: string): Promise<MerchantSecret> {
+  if (!secretArn) throw new Error('Missing secret ARN')
+
+  const resp = await sm.send(new GetSecretValueCommand({ SecretId: secretArn }))
+  const raw = resp.SecretString ?? (resp.SecretBinary ? Buffer.from(resp.SecretBinary).toString('utf8') : '')
+  if (!raw) throw new Error('EmptySecret')
+
+  let parsed: any
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error('BadSecretJSON')
+  }
+
+  if (!parsed.merchantId || !parsed.accessToken) {
+    throw new Error('Missing merchantId or accessToken in secret')
+  }
+
+  return {
+    merchantId: String(parsed.merchantId),
+    accessToken: String(parsed.accessToken),
+    refreshToken: parsed.refreshToken ? String(parsed.refreshToken) : undefined,
+    squareEnv: parsed.squareEnv === 'production' ? 'production' : 'sandbox',
+    updatedAt: parsed.updatedAt ? String(parsed.updatedAt) : undefined,
+  }
+}
+
+export async function getSquareClient(merchant: Merchant) {
+  const { accessToken } = await getMerchantSecretByArn(merchant.secretsArn)
   return new SquareClient({
     token: accessToken,
     environment: SquareEnvironment.Sandbox,

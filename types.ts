@@ -322,7 +322,7 @@ export type HydratedCatalog = {
 
 export type SquareAuthResponse = {
   url: string | null
-  auth: string | null
+  state: string | null
 }
 
 export type DemoOrderInput = {

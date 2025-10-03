@@ -10,20 +10,20 @@ import { useMerchant } from './MerchantContext'
 
 export default function LinkAccount() {
   const [url, setUrl] = useState<string | null>(null)
-  const [auth, setAuth] = useState<string | null>(null)
+  const [authState, setAuthState] = useState<string | null>(null)
   const [isConfiguring, setIsConfiguring] = useState(true)
   const merchant = useMerchant()
 
   useEffect(() => {
     async function getUrl() {
       if (merchant?.id) {
-        const { url, auth } = await getAuthUrl(merchant.id)
+        const { url, state } = await getAuthUrl(merchant.id)
         setUrl(url)
-        setAuth(auth)
+        setAuthState(state)
 
         // Set the oauth_state cookie here
-        if (auth) {
-          document.cookie = `oauth_state=${auth}; Path=/; Secure; SameSite=Lax`
+        if (state) {
+          document.cookie = `oauth_state=${state}; Path=/; Secure; SameSite=Lax`
         }
       }
       setIsConfiguring(false)

@@ -41,7 +41,7 @@ const schema = a
     }),
     SquareAuthResponse: a.customType({
       url: a.string(),
-      auth: a.string(),
+      state: a.string(),
     }),
     ProductSubscription: a.customType({
       level: a.enum(['free', 'basic', 'premium']),
@@ -138,7 +138,8 @@ const schema = a
         id: a.id().required(),
         handle: a.id().required(),
         squareMerchantId: a.string().required(),
-        accessToken: a.string().required(),
+        secretsArn: a.string().required(),
+        accessToken: a.string(),
         refreshToken: a.string(),
         tokenExpiresAt: a.datetime(),
         tokenrefreshedAt: a.datetime(),

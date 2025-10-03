@@ -139,3 +139,11 @@ export type SquareWebhookEvent =
   | SquareOrderUpdatedWebhook
   | SquareOrderFulfillmentUpdatedWebhook
   | SquarePaymentCreatedWebhook
+
+export type MerchantSecret = {
+  merchantId: string
+  accessToken: string
+  refreshToken?: string
+  squareEnv?: 'sandbox' | 'production'
+  updatedAt?: string
+}

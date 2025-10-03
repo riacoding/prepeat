@@ -978,7 +978,7 @@ export async function getAuthUrl(merchantId: string): Promise<SquareAuthResponse
     throw new Error(errors.map((e: any) => e.message).join(', '))
   }
 
-  return { url: data?.url || null, auth: data?.auth || null }
+  return { url: data?.url || null, state: data?.state || null }
 }
 
 export async function getUserBySub(sub: string) {
