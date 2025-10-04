@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { cookieBasedClient } from '@/util/amplify'
 import { SquareClient, SquareEnvironment } from 'square'
 import { randomUUID } from 'crypto'
-import { getServerMerchant, isAuth } from '@/lib/ssr-actions'
+import { getMerchantSecretByArn, getServerMerchant, isAuth } from '@/lib/ssr-actions'
 
 export async function POST(req: NextRequest) {
   //console.log('SQUARE_ACCESS_TOKEN length:', process.env.SQUARE_ACCESS_TOKEN?.length)
@@ -13,10 +13,14 @@ export async function POST(req: NextRequest) {
     console.log('checkout route', JSON.stringify(body, null, 2))
     const merchant = await getServerMerchant(merchantId)
 
+    if (!merchant?.secretsArn) {
+      return NextResponse.json({ error: 'Unauthorized merchant' }, { status: 401 })
+    }
+    const secret = await getMerchantSecretByArn(merchant.secretsArn)
+
     const client = new SquareClient({
-      token: merchant?.accessToken,
-      // environment: process.env.NODE_ENV === 'production' ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
-      environment: SquareEnvironment.Sandbox,
+      token: secret.accessToken,
+      environment: secret.squareEnv === 'production' ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
       version: '2025-04-16',
     })
 

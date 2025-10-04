@@ -29,6 +29,8 @@
 'use server'
 import { headers } from 'next/headers'
 import { cookieBasedClient, getCurrentUserServer } from '@/util/amplify'
+import { SecretsManagerClient, GetSecretValueCommand } from '@aws-sdk/client-secrets-manager'
+import { Buffer } from 'node:buffer'
 
 import {
   Menu,
@@ -64,9 +66,12 @@ import { SquareClient, SquareEnvironment } from 'square'
 import { randomUUID } from 'crypto'
 import { sanitizeBigInts } from '@/amplify/functions/webhookProcessor/util'
 import { mockSquareOrderFromCart } from './mockSquareOrderFromCart'
+import { MerchantSecret } from '@/app/(prepeat)/square/callback/secrets-upsert'
 
 const SQUARE_BASE_URL = 'https://connect.squareupsandbox.com/v2'
 const SQUARE_TOKEN = process.env.SQUARE_ACCESS_TOKEN
+
+const sm = new SecretsManagerClient({})
 
 const client = new SquareClient({
   environment: SquareEnvironment.Sandbox,
@@ -82,14 +87,13 @@ export const isAuth = async () => {
   return false
 }
 
-export async function getSquareClient(
-  accessToken: string,
-  environment: SquareEnvironment = SquareEnvironment.Sandbox
-): Promise<SquareClient | null> {
-  if (!accessToken) return null
+export async function getSquareClient(secretsArn: string): Promise<SquareClient | null> {
+  if (!secretsArn) return null
+  const secret = await getMerchantSecretByArn(secretsArn)
+  if (!secret) return null
   return new SquareClient({
-    token: accessToken,
-    environment,
+    token: secret.accessToken,
+    environment: secret.squareEnv === 'production' ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
   })
 }
 
@@ -228,8 +232,8 @@ export async function updateSquareOrder(
   }
 
   const merchant = await getServerMerchant(merchantId)
-  if (!merchant) return
-  const client = await getSquareClient(merchant.accessToken)
+  if (!merchant || !merchant.secretsArn) return
+  const client = await getSquareClient(merchant.secretsArn)
   if (!client) return
 
   try {
@@ -1188,5 +1192,32 @@ export async function subscribeEmailAction(_prevState: ActionState, formData: Fo
     }
     console.error('subscribeEmail error:', err)
     return { ok: false, message: 'Something went wrong. Please try again.' }
+  }
+}
+
+export async function getMerchantSecretByArn(secretArn: string): Promise<MerchantSecret> {
+  if (!secretArn) throw new Error('Missing secret ARN')
+
+  const resp = await sm.send(new GetSecretValueCommand({ SecretId: secretArn }))
+  const raw = resp.SecretString ?? (resp.SecretBinary ? Buffer.from(resp.SecretBinary).toString('utf8') : '')
+  if (!raw) throw new Error('EmptySecret')
+
+  let parsed: any
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    throw new Error('BadSecretJSON')
+  }
+
+  if (!parsed.merchantId || !parsed.accessToken) {
+    throw new Error('Missing merchantId or accessToken in secret')
+  }
+
+  return {
+    merchantId: String(parsed.merchantId),
+    accessToken: String(parsed.accessToken),
+    refreshToken: parsed.refreshToken ? String(parsed.refreshToken) : undefined,
+    squareEnv: parsed.squareEnv === 'production' ? 'production' : 'sandbox',
+    updatedAt: parsed.updatedAt ? String(parsed.updatedAt) : undefined,
   }
 }
