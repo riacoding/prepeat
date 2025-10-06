@@ -1,4 +1,5 @@
 import { randomUUID } from 'crypto'
+import { ulid } from 'ulid'
 import { SquareClient, SquareEnvironment, Square } from 'square'
 import type { Schema } from '../../data/resource'
 import { Amplify } from 'aws-amplify'
@@ -20,7 +21,108 @@ const { resourceConfig, libraryOptions } = await getAmplifyDataClientConfig(env)
 Amplify.configure(resourceConfig, libraryOptions)
 const amplifyClient = generateClient<Schema>()
 
+type Money = {
+  amount: string | number
+  currency: string
+}
+
+type SquareOrder = {
+  id: string
+  locationId: string
+  referenceId?: string
+  state?: 'OPEN' | 'COMPLETED' | string
+  createdAt?: string
+  updatedAt?: string
+  lineItems?: Array<{
+    uid: string
+    catalogObjectId: string
+    catalogVersion: string
+    quantity: string
+    name: string
+    variationName?: string
+    basePriceMoney?: Money
+    grossSalesMoney?: Money
+    totalTaxMoney?: Money
+    totalDiscountMoney?: Money
+    totalMoney?: Money
+    variationTotalPriceMoney?: Money
+    metadata?: Record<string, string>
+    modifiers?: Array<{
+      uid: string
+      name: string
+      quantity: string
+      basePriceMoney?: Money
+      totalPriceMoney?: Money
+      catalogObjectId?: string
+      catalogVersion?: string
+    }>
+    appliedTaxes?: Array<{
+      uid: string
+      taxUid: string
+      appliedMoney: Money
+    }>
+    itemType?: 'ITEM' | string
+    totalServiceChargeMoney?: Money
+  }>
+  taxes?: Array<{
+    uid: string
+    name: string
+    percentage: string
+    type: string
+    scope: string
+    appliedMoney: Money
+  }>
+  fulfillments?: Array<{
+    uid: string
+    type: 'PICKUP' | string
+    state: 'PROPOSED' | 'PREPARED' | 'COMPLETED' | string
+    pickupDetails?: {
+      pickupAt?: string
+      placedAt?: string
+      note?: string
+      recipient?: {
+        displayName?: string
+        emailAddress?: string
+        phoneNumber?: string
+      }
+    }
+  }>
+  metadata?: {
+    menuSlug?: string
+    ticketNumber?: string
+    orderToken?: string
+  }
+  totalMoney?: Money
+  totalTaxMoney?: Money
+  totalDiscountMoney?: Money
+  totalTipMoney?: Money
+  totalServiceChargeMoney?: Money
+  netAmounts?: {
+    totalMoney?: Money
+    taxMoney?: Money
+    discountMoney?: Money
+    tipMoney?: Money
+    serviceChargeMoney?: Money
+  }
+  tenders?: Array<{
+    id: string
+    locationId: string
+    transactionId: string
+    createdAt: string
+    amountMoney: Money
+    type: string
+    paymentId: string
+  }>
+  source?: {
+    name: string
+  }
+  ticketName?: string
+  netAmountDueMoney?: Money
+  version?: number
+}
+
 type Merchant = Schema['Merchant']['type']
+type Order = Schema['Order']['type'] & { rawData: SquareOrder }
 
 const sm = new SecretsManagerClient({})
 
@@ -52,10 +154,10 @@ export async function getMerchantSecretByArn(secretArn: string): Promise<Merchan
 }
 
 export async function getSquareClient(merchant: Merchant) {
-  const { accessToken } = await getMerchantSecretByArn(merchant.secretsArn)
+  const { accessToken, squareEnv } = await getMerchantSecretByArn(merchant.secretsArn)
   return new SquareClient({
     token: accessToken,
-    environment: SquareEnvironment.Sandbox,
+    environment: squareEnv === 'production' ? SquareEnvironment.Production : SquareEnvironment.Sandbox,
   })
 }
 export async function getMerchant(squareMerchantId: string) {
@@ -111,7 +213,6 @@ async function updateFulfillmentStatus(orderId: string, newFulfillmentStatus: st
 
 export async function createOrder(orderId: string, eventId: string, merchant_id: string, squareClient: SquareClient) {
   console.log(`🆕 [${eventId}] Handling order.created:${orderId}`)
-  //TODO: swap merchant_Id (squareMerchant_Id) for internal merchantId
   const { order, errors: sqErrors } = await squareClient.orders.get({ orderId })
 
   console.log('fetched order', JSON.stringify(sanitizeBigInts(order), null, 2))
@@ -178,7 +279,36 @@ export async function createOrder(orderId: string, eventId: string, merchant_id:
 
   console.log(`Amplify order created:${amplifyOrder?.id} `)
 
+  //check if order has labels to be printed
+  //generate DeviceJob to print tickets
+  if (amplifyOrder && amplifyOrder.rawData) {
+    //await generateLabels(order, amplifyOrder as Order)
+  }
+
   return amplifyOrder?.id
+}
+
+async function generateLabels(order: Square.Order | undefined, amplifyOrder: Order) {
+  if (order?.lineItems?.some((item) => item.metadata?.labels)) {
+    const { data: deviceJob, errors: deviceJobErrors } = await amplifyClient.models.DeviceJob.create({
+      id: ulid(),
+      createdAt: amplifyOrder.createdAt,
+      deviceId: '1234',
+      status: 'QUEUED',
+      merchantId: amplifyOrder.merchantId,
+      payload: {
+        type: 'TEXT',
+        content: '\n  Ticket #1\n  Kai Button\n  Pickup 6:00pm\n  1 of 1\n',
+      },
+    })
+
+    if (deviceJobErrors && deviceJobErrors.length > 0) {
+      console.error('Amplify Create DeviceJob Error:', JSON.stringify(deviceJobErrors))
+      throw new Error(deviceJobErrors.map((e) => e.message).join(', '))
+    }
+
+    console.log(`Amplify device job created: ${deviceJob?.id}`)
+  }
 }
 
 export async function fulfillmentUpdated(

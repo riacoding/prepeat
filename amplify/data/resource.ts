@@ -250,6 +250,7 @@ const schema = a
         customName: a.string(), // optional name override
         isFeatured: a.boolean().default(false),
         sortOrder: a.integer(),
+        printLabel: a.boolean().default(false),
         menu: a.belongsTo('Menu', 'menuId'),
         toppings: a.hasMany('ItemTopping', 'menuItemId'),
       })

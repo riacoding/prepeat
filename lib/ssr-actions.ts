@@ -60,16 +60,40 @@ import {
   OrderReceipt,
   DemoOrderInput,
   ActionState,
+  SquareItemVariation,
 } from '@/types'
 import { extractReceiptItems, isEmail, md5Hex, orderNumberToTicket } from './utils'
-import { SquareClient, SquareEnvironment } from 'square'
+import { Square, SquareClient, SquareEnvironment } from 'square'
 import { randomUUID } from 'crypto'
 import { sanitizeBigInts } from '@/amplify/functions/webhookProcessor/util'
 import { mockSquareOrderFromCart } from './mockSquareOrderFromCart'
 import { MerchantSecret } from '@/app/(prepeat)/square/callback/secrets-upsert'
-
 const SQUARE_BASE_URL = 'https://connect.squareupsandbox.com/v2'
 const SQUARE_TOKEN = process.env.SQUARE_ACCESS_TOKEN
+
+// Narrowed envelope types
+type ItemObject = Square.CatalogObject & { type: 'ITEM'; itemData: Square.CatalogItem }
+type VariationObject = Square.CatalogObject & { type: 'ITEM_VARIATION'; itemVariationData: Square.CatalogItemVariation }
+type ModifierListObject = Square.CatalogObject & { type: 'MODIFIER_LIST'; modifierListData: Square.CatalogModifierList }
+
+export type ItemWithModifiers = {
+  item: ItemObject // envelope: has id/version + itemData
+  modifierLists: ModifierListObject[] // envelopes: have id/version + modifierListData
+}
+
+const isItemObject = (
+  o: Square.CatalogObject
+): o is Square.CatalogObject & { type: 'ITEM'; itemData: Square.CatalogItem } => o.type === 'ITEM' && !!o.itemData
+
+const isVariationObject = (
+  o: Square.CatalogObject
+): o is Square.CatalogObject & { type: 'ITEM_VARIATION'; itemVariationData: Square.CatalogItemVariation } =>
+  o.type === 'ITEM_VARIATION' && !!o.itemVariationData
+
+const isModifierListObject = (o: Square.CatalogObject | undefined): o is ModifierListObject =>
+  !!o && o.type === 'MODIFIER_LIST' && !!o.modifierListData
+
+const bigIntToJSON = (_: string, v: unknown) => (typeof v === 'bigint' ? v.toString() : v)
 
 const sm = new SecretsManagerClient({})
 
@@ -634,11 +658,6 @@ export async function deleteMenuItemsForMenu(menuId: string): Promise<void> {
   )
 }
 
-type ItemWithModifiers = {
-  item: SquareItem
-  modifierLists: SquareModifierList[]
-}
-
 export async function getCatalogItems(merchantId: string): Promise<HydratedCatalog[] | []> {
   const authMode = (await isAuth()) ? 'userPool' : 'iam'
   try {
@@ -711,12 +730,12 @@ export async function fetchMenuItemsWithModifiers(squareItemIds: string[]): Prom
   // Hydrate and return in expected format
   const hydrated: ItemWithModifiers[] = filtered.map((ci) => {
     const parsed = JSON.parse(ci.catalogData as unknown as string) as {
-      item: SquareItem
-      modifierLists?: SquareModifierList[]
+      item: ItemObject
+      modifierLists?: ModifierListObject[]
     }
     const { item, modifierLists } = parsed as {
-      item: SquareItem
-      modifierLists?: SquareModifierList[]
+      item: ItemObject
+      modifierLists?: ModifierListObject[]
     }
     //console.log('appsync item', item)
     return {
@@ -772,140 +791,120 @@ export async function updateMenuItem(input: {
   return data?.id
 }
 
-export async function getSquareItemsWithModifiers(merchant: Merchant): Promise<ItemWithModifiers[] | []> {
-  const token = merchant.accessToken
-  if (!token) throw new Error('No access token')
-
+export async function getSquareItemsWithModifiers(
+  merchant: Merchant,
+  client: SquareClient
+): Promise<ItemWithModifiers[]> {
   try {
-    const res = await fetch(`${SQUARE_BASE_URL}/catalog/list`, {
-      method: 'GET',
-      headers: {
-        Authorization: `Bearer ${token}`,
-        'Content-Type': 'application/json',
-      },
-      cache: 'no-store',
-    })
+    if (!client) return []
 
-    const json = await res.json()
-    const objects: SquareCatalogObject[] = json.objects || []
+    const page = await client.catalog.list({ types: 'ITEM,ITEM_VARIATION,MODIFIER_LIST' })
+    const data = page.data ?? []
 
-    console.log('objects', objects)
+    // 1) Only ITEM objects that actually have itemData
+    const items = data.filter(isItemObject)
 
-    // 1. Filter to only requested items
-    const items: SquareItem[] = objects.filter((obj): obj is SquareItem => obj.type === 'ITEM')
-
-    // 2. Collect modifier list IDs from both item and variation levels
+    // 2) Collect modifier list IDs from item
     const modifierListIds = new Set<string>()
-
-    for (const item of items) {
-      // item-level
-      const itemLevel = item.item_data?.modifier_list_info ?? []
-      itemLevel.forEach((info) => {
-        if (info.enabled && info.modifier_list_id) {
-          modifierListIds.add(info.modifier_list_id)
-        }
-      })
-
-      // variation-level
-      const variations = item.item_data?.variations ?? []
-      for (const variation of variations) {
-        const varInfos = variation.item_variation_data?.modifier_list_info ?? []
-        varInfos.forEach((info) => {
-          if (info.enabled && info.modifier_list_id) {
-            modifierListIds.add(info.modifier_list_id)
-          }
-        })
+    for (const obj of items) {
+      const item = obj.itemData // <-- CatalogItem payload
+      for (const info of item.modifierListInfo ?? []) {
+        if (info.enabled && info.modifierListId) modifierListIds.add(info.modifierListId)
       }
     }
 
-    // 3. Fetch all modifier lists
-    const modifierLists: Record<string, SquareModifierList> = {}
-
+    // 3) Fetch modifier lists (store the payload .modifierListData)
+    const modifierLists: Record<string, ModifierListObject> = {}
     await Promise.all(
-      Array.from(modifierListIds).map(async (id) => {
-        const res = await fetch(`${SQUARE_BASE_URL}/catalog/object/${id}`, {
-          headers: {
-            Authorization: `Bearer ${SQUARE_TOKEN}`,
-            'Content-Type': 'application/json',
-          },
-          cache: 'no-store',
-        })
-
-        const json = await res.json()
-        modifierLists[id] = json.object
+      [...modifierListIds].map(async (id) => {
+        const { object } = await client.catalog.object.get({ objectId: id })
+        if (isModifierListObject(object)) {
+          // Prefer the server’s id; fallback to the requested id
+          const key = object.id ?? id
+          modifierLists[key] = object // keep full envelope (id, version, etc.)
+        }
       })
     )
 
-    // 4. Return items with resolved modifier lists
-    return items.map((item) => {
+    // 4) Build result with itemData payload
+    return items.map((obj): ItemWithModifiers => {
+      const item = obj
       const listIds = new Set<string>()
 
-      const itemLevel = item.item_data?.modifier_list_info ?? []
-      itemLevel.forEach((info) => {
-        if (info.enabled && info.modifier_list_id) {
-          listIds.add(info.modifier_list_id)
-        }
-      })
-
-      const variations = item.item_data?.variations ?? []
-      for (const variation of variations) {
-        const varInfos = variation.item_variation_data?.modifier_list_info ?? []
-        varInfos.forEach((info) => {
-          if (info.enabled && info.modifier_list_id) {
-            listIds.add(info.modifier_list_id)
-          }
-        })
+      for (const info of item.itemData.modifierListInfo ?? []) {
+        if (info.enabled && info.modifierListId) listIds.add(info.modifierListId)
       }
 
-      const resolvedLists = Array.from(listIds)
-        .map((id) => modifierLists[id])
-        .filter((list): list is SquareModifierList => Boolean(list))
+      const resolved = [...listIds].map((id) => modifierLists[id]).filter((m): m is ModifierListObject => !!m)
 
-      return {
-        item,
-        modifierLists: resolvedLists,
-      }
+      return { item, modifierLists: resolved }
     })
-  } catch (err) {
-    console.log(err)
+  } catch (e) {
+    console.log(e)
+    return []
   }
-
-  return []
 }
 
 export async function syncMenuItems(merchant: PublicMerchant) {
   const serverMerchant = await getServerMerchant(merchant.id)
-  if (!serverMerchant) return
-  const itemsWithModifiers = await getSquareItemsWithModifiers(serverMerchant)
+  if (!serverMerchant?.secretsArn) return
 
-  console.log('items to sync', itemsWithModifiers)
+  const client = await getSquareClient(serverMerchant.secretsArn)
+  if (!client) return
+
+  // Expecting: { item: CatalogItem (payload with variations[] as envelopes), modifierLists: CatalogModifierList[] }
+  const itemsWithModifiers = await getSquareItemsWithModifiers(serverMerchant, client)
+
+  console.log('items to sync', JSON.stringify(itemsWithModifiers.slice(0, 2), bigIntToJSON, 2)) // sample
 
   for (const { item, modifierLists } of itemsWithModifiers) {
-    const catalogData = {
-      item,
-      modifierLists,
+    // item.variations is an array of CatalogObject envelopes
+    const variations = item.itemData.variations?.filter(isVariationObject) ?? []
+
+    // Collect modifier list IDs attached to this item (and variations)
+    const itemLevelListIds = new Set<string>()
+    for (const info of item.itemData.modifierListInfo ?? []) {
+      if (info.enabled && info.modifierListId) itemLevelListIds.add(info.modifierListId)
     }
 
-    const variation = item.item_data.variations?.find((v) => v.item_variation_data?.name === 'Regular')
+    for (const vObj of variations) {
+      const v = vObj.itemVariationData
+      const catalogVariationId = vObj.id // <- THIS is what Orders reference
+      const parentItemId = v.itemId // link back to the Item
+      const variationName = v.name ?? ''
+      const sku = v.sku ?? null
 
-    const catalogVariationId = variation?.id!
+      // Square Money uses BigInt for amount; choose number or string:
+      const priceAmount = v.priceMoney?.amount ? Number(v.priceMoney.amount) : null // ok for small values
+      const currency = v.priceMoney?.currency ?? null
 
-    console.log('variation', catalogVariationId, variation)
+      // Minimal payload you upsert
+      const catalogData = {
+        itemName: item.itemData.name ?? '',
+        variationName: v.name ?? '',
+        sku: v.sku ?? null,
+        price: v.priceMoney?.amount ? Number(v.priceMoney.amount) : null,
+        currency: v.priceMoney?.currency ?? null,
+        // keeping versions is handy for future upserts
+        versions: {
+          itemVersion: item.version ? String(item.version) : null,
+          variationVersion: vObj.version ? String(vObj.version) : null,
+        },
+        // (optional) full list envelopes if you want names, etc.
+        modifierLists,
+      }
 
-    // Save into local DynamoDB catalog
-    const catalogItem = await upsertCatalogItem({
-      squareItemId: item.id,
-      merchantId: merchant.id,
-      catalogVariationId,
-      catalogData,
-    })
-
-    //  // Step 2: Save into MenuItem
-    //  await upsertMenuItem({
-    //   menuId,
-    //   catalogItemId: catalogItem.id,
-    //   customName: item.itemData?.name ?? '',
-    // })
+      try {
+        await upsertCatalogItem({
+          squareItemId: parentItemId!,
+          merchantId: merchant.id,
+          catalogVariationId, // string
+          catalogData, // your snapshot/cache
+        })
+      } catch (err) {
+        console.log(`Error upserting catalog variation: ${catalogVariationId}`, err)
+      }
+    }
   }
 }
 
