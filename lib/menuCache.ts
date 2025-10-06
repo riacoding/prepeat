@@ -1,6 +1,6 @@
 // lib/menuCache.ts
 import { DynamoDBClient } from '@aws-sdk/client-dynamodb'
-import { DynamoDBDocumentClient, GetCommand, PutCommand } from '@aws-sdk/lib-dynamodb'
+import { DynamoDBDocumentClient, GetCommand, PutCommand, DeleteCommand } from '@aws-sdk/lib-dynamodb'
 import { fetchMenuWithItems } from '@/lib/fetchMenuWithItems' // your existing function
 import { putMetric } from '@/lib/metrics'
 
@@ -81,4 +81,40 @@ export async function getCachedMenu(merchantId: string, loc: string): Promise<Fe
   }
   await putMetric('DurationMs', Date.now() - t0)
   return computed
+}
+
+/**
+ * Invalidate the cache entry for a merchant+loc.
+ * Next call to getCachedMenu() will recompute and re-populate.
+ *
+ * Pass { warm: true } to immediately re-fill the cache after invalidation.
+ */
+export async function bumpCacheVersion(merchantId: string, loc: string, opts?: { warm?: boolean }): Promise<void> {
+  if (!merchantId || !loc) throw new Error('bumpCacheVersion requires merchantId and loc')
+  if (!TABLE) {
+    console.warn('[MenuCache] bumpCacheVersion: MENU_CACHE_TABLE not set; nothing to invalidate')
+    return
+  }
+
+  const pk = pkOf(merchantId, loc)
+
+  try {
+    await ddb.send(new DeleteCommand({ TableName: TABLE, Key: { pk } }))
+    await putMetric('Invalidate', 1)
+  } catch (e) {
+    await putMetric('InvalidateError', 1)
+    console.error('[MenuCache] bumpCacheVersion delete failed', { pk, error: e })
+    // non-fatal
+  }
+
+  // Optional warm—recompute and repopulate now (instead of on next read)
+  if (opts?.warm) {
+    try {
+      await getCachedMenu(merchantId, loc) // miss -> compute -> put
+      await putMetric('WarmSuccess', 1)
+    } catch (e) {
+      await putMetric('WarmError', 1)
+      console.error('[MenuCache] warm after bump failed', { pk, error: e })
+    }
+  }
 }

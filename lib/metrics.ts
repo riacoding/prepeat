@@ -7,7 +7,16 @@ const ENV = process.env['ENVIRONMENT'] ?? process.env['NODE_ENV'] ?? 'unknown'
 const TABLE = process.env['MENU_CACHE_TABLE'] ?? 'unknown'
 
 export async function putMetric(
-  metricName: 'Hit' | 'Miss' | 'WriteSuccess' | 'WriteError' | 'DurationMs',
+  metricName:
+    | 'Hit'
+    | 'Miss'
+    | 'WriteSuccess'
+    | 'WriteError'
+    | 'DurationMs'
+    | 'Invalidate'
+    | 'InvalidateError'
+    | 'WarmSuccess'
+    | 'WarmError',
   value: number
 ) {
   try {

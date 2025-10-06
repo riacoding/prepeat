@@ -188,7 +188,7 @@ export default function EditPage({ id }: EditPageParams) {
 
     // 2. Save MenuItems based on selected catalog item ids
     await saveMenuItemsForMenu(savedMenu.id, Array.from(selected), merchant.id)
-    await bumpCacheVersion()
+    await bumpCacheVersion(merchant.id, data.locationId, { warm: true })
     router.push('/admin')
   }
 
