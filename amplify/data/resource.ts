@@ -242,6 +242,19 @@ const schema = a
       ])
       .authorization((allow) => [allow.groups(['vendor', 'admin']), allow.guest().to(['read'])]),
 
+    ModifierList: a
+      .model({
+        merchantId: a.id().required(),
+        modifierListId: a.string().required(), // Square list id
+        name: a.string(),
+        modifiers: a.json(), // [{ id, name, priceCents }]
+        version: a.string(),
+        raw: a.json(), // optional: full envelope
+      })
+      .identifier(['merchantId', 'modifierListId'])
+      .secondaryIndexes((idx) => [idx('merchantId')])
+      .authorization((allow) => [allow.groups(['vendor', 'admin']), allow.guest().to(['read'])]),
+
     // 🆕 Standalone CatalogItem to sync Square catalog
     CatalogItem: a
       .model({
