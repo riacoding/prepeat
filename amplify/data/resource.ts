@@ -199,6 +199,49 @@ const schema = a
       })
       .authorization((allow) => [allow.guest().to(['read']), allow.authenticated().to(['read'])]),
 
+    // New model: variation-first (SKU)
+    CatalogVariation: a
+      .model({
+        merchantId: a.id().required(),
+
+        // Primary linking key in your app (Square catalog_object_id of the VARIATION)
+        catalogVariationId: a.string().required(),
+
+        // Parent Square Item envelope id (handy for grouping variations)
+        parentItemId: a.string().required(),
+
+        // (Legacy compat) keep if you referenced this name elsewhere; otherwise omit
+        squareItemId: a.string(), // ← same value as parentItemId; mark as deprecated later
+
+        // Useful denormalized fields (optional but nice for UI/queries)
+        itemName: a.string(),
+        sku: a.string(),
+
+        // Money: store as minor units (cents) to avoid BigInt/float issues
+        priceCents: a.integer(),
+        currency: a.string(),
+
+        // Modifiers assigned at the Item level (apply to all variations of that item)
+        modifierListIds: a.string().array(),
+
+        // Store envelope versions as strings (Square returns BigInt)
+        itemVersion: a.string(),
+        variationVersion: a.string(),
+
+        // Your snapshot (keep what you need from Square)
+        catalogData: a.json().required(),
+
+        // Optional: blob key / media
+        s3ItemKey: a.string(),
+      })
+      .identifier(['merchantId', 'catalogVariationId'])
+      .secondaryIndexes((index) => [
+        index('merchantId'),
+        index('parentItemId'), // query all variations for an item
+        index('squareItemId'), // legacy lookup until fully migrated
+      ])
+      .authorization((allow) => [allow.groups(['vendor', 'admin']), allow.guest().to(['read'])]),
+
     // 🆕 Standalone CatalogItem to sync Square catalog
     CatalogItem: a
       .model({
