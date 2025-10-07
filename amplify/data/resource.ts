@@ -212,7 +212,7 @@ const schema = a
 
         // (Legacy compat) keep if you referenced this name elsewhere; otherwise omit
         squareItemId: a.string(), // ← same value as parentItemId; mark as deprecated later
-
+        variationName: a.string(),
         // Useful denormalized fields (optional but nice for UI/queries)
         itemName: a.string(),
         sku: a.string(),
