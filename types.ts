@@ -11,7 +11,7 @@ export type Merchant = Schema['Merchant']['type']
 export type UpdateMerchantInput = Schema['Merchant']['updateType']
 export type SafeMenuItem = RemoveFunctions<Schema['MenuItem']['type']>
 export type User = Schema['User']['type']
-
+export type CatalogVariationInput = Schema['CatalogVariation']['createType']
 export type SortOption = 'Newest' | 'Oldest' | 'All Day'
 export type CodeStatus = 'NEW' | 'RESERVED' | 'USED' | 'EXPIRED'
 

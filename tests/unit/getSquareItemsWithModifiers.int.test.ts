@@ -16,15 +16,18 @@ function sanitizeBigInts(obj: any): any {
   return obj
 }
 
-;(token ? describe : describe.skip)('Square sandbox integration', () => {
-  it('fetches items and modifier lists', async () => {
-    vi.spyOn(ssr, 'createModifierList').mockResolvedValue({
-      merchantId: '1234',
-      modifierListId: 'mock',
-    })
-    const client = new SquareClient({ token, environment: SquareEnvironment.Sandbox })
-    const out = await ssr.getSquareItemsWithModifiers({ id: '1234', secretsArn: 'n/a' } as any, client)
-    // No strict expectations—just proves end-to-end wiring
-    console.log(`Fetched ${JSON.stringify(sanitizeBigInts(out), null, 2)} items with modifiers`)
+it('fetches items and modifier lists', async () => {
+  vi.spyOn(ssr, 'createModifierList').mockResolvedValue({
+    merchantId: '1234',
+    modifierListId: 'mock',
   })
+  const client = new SquareClient({ token, environment: SquareEnvironment.Sandbox })
+  const stubSave = vi.fn().mockResolvedValue({ ok: true })
+  const out = await ssr.getSquareItemsWithModifiers(
+    { id: '1234', secretsArn: 'n/a' } as any,
+    client,
+    { saveModifierList: stubSave } // <-- override default saver
+  )
+
+  console.log(`Fetched ${JSON.stringify(sanitizeBigInts(out), null, 2)} items with modifiers`)
 })
