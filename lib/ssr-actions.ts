@@ -75,7 +75,7 @@ const SQUARE_TOKEN = process.env.SQUARE_ACCESS_TOKEN
 type ItemObject = Square.CatalogObject & { type: 'ITEM'; itemData: Square.CatalogItem }
 type VariationObject = Square.CatalogObject & { type: 'ITEM_VARIATION'; itemVariationData: Square.CatalogItemVariation }
 type ModifierListObject = Square.CatalogObject & { type: 'MODIFIER_LIST'; modifierListData: Square.CatalogModifierList }
-
+type ModifierObject = Square.CatalogObject & { type: 'MODIFIER'; modifierData: Square.CatalogModifier }
 export type ItemWithModifiers = {
   item: ItemObject // envelope: has id/version + itemData
   modifierLists: ModifierListObject[] // envelopes: have id/version + modifierListData
@@ -92,6 +92,11 @@ const isVariationObject = (
 
 const isModifierListObject = (o: Square.CatalogObject | undefined): o is ModifierListObject =>
   !!o && o.type === 'MODIFIER_LIST' && !!o.modifierListData
+
+const isModifierObject = (
+  o?: Square.CatalogObject
+): o is Square.CatalogObject & { type: 'MODIFIER'; modifierData: Square.CatalogModifier } =>
+  !!o && o.type === 'MODIFIER' && !!o.modifierData
 
 const bigIntToJSON = (_: string, v: unknown) => (typeof v === 'bigint' ? v.toString() : v)
 
@@ -818,10 +823,32 @@ export async function getSquareItemsWithModifiers(
     await Promise.all(
       [...modifierListIds].map(async (id) => {
         const { object } = await client.catalog.object.get({ objectId: id })
-        if (isModifierListObject(object)) {
-          // Prefer the server’s id; fallback to the requested id
-          const key = object.id ?? id
-          modifierLists[key] = object // keep full envelope (id, version, etc.)
+        if (!isModifierListObject(object)) return
+
+        const key = object.id ?? id
+        modifierLists[key] = object // keep full envelope (id, version, etc.)
+
+        // Map Square modifier envelopes → your schema shape
+        const rows = (object.modifierListData.modifiers ?? []).filter(isModifierObject).map((m) => ({
+          id: m.id!, // modifier CatalogObject id
+          name: m.modifierData.name ?? '',
+          // Square Money.amount is BigInt → stringify for your API
+          priceMoney: m.modifierData.priceMoney
+            ? {
+                amount: String(m.modifierData.priceMoney.amount),
+                currency: m.modifierData.priceMoney.currency ?? 'USD',
+              }
+            : { amount: '0', currency: 'USD' }, // fallback if no price
+        }))
+
+        if (!process.env.TEST) {
+          // Persist one row per list (idempotent on modifierListId)
+          await createModifierList({
+            merchantId: merchant.id,
+            modifierListId: key,
+            name: object.modifierListData.name ?? '',
+            modifiers: rows,
+          })
         }
       })
     )
@@ -835,7 +862,7 @@ export async function getSquareItemsWithModifiers(
         if (info.enabled && info.modifierListId) listIds.add(info.modifierListId)
       }
 
-      const resolved = [...listIds].map((id) => modifierLists[id]).filter((m): m is ModifierListObject => !!m)
+      const resolved = [...listIds].map((id) => modifierLists[id]).filter(isModifierListObject)
 
       return { item, modifierLists: resolved }
     })
@@ -843,6 +870,23 @@ export async function getSquareItemsWithModifiers(
     console.log(e)
     return []
   }
+}
+
+export async function createModifierList(input: {
+  merchantId: string
+  modifierListId: string
+  name: string
+  modifiers: Array<{ id: string; name: string; priceMoney: { amount: string; currency: string } }>
+}) {
+  console.log('Creating ModifierList:', input)
+  const { data, errors } = await cookieBasedClient.models.ModifierList.create(input, { authMode: 'userPool' })
+
+  if (errors?.length) {
+    console.error('Create failed:', errors)
+    throw new Error(errors.map((e) => e.message).join(', '))
+  }
+
+  return { merchantId: data?.merchantId, modifierListId: data?.modifierListId }
 }
 
 export async function syncMenuItems(merchant: PublicMerchant) {

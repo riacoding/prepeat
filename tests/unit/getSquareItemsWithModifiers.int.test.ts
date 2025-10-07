@@ -1,6 +1,6 @@
 // getSquareItemsWithModifiers.int.test.ts
-import { describe, it } from 'vitest'
-import { getSquareItemsWithModifiers } from '../../lib/ssr-actions'
+import { vi, describe, it } from 'vitest'
+import * as ssr from '../../lib/ssr-actions'
 import { SquareClient, SquareEnvironment } from 'square'
 import { config } from '@dotenvx/dotenvx'
 config({ path: '.env.e2e', override: false })
@@ -18,8 +18,12 @@ function sanitizeBigInts(obj: any): any {
 
 ;(token ? describe : describe.skip)('Square sandbox integration', () => {
   it('fetches items and modifier lists', async () => {
+    vi.spyOn(ssr, 'createModifierList').mockResolvedValue({
+      merchantId: '1234',
+      modifierListId: 'mock',
+    })
     const client = new SquareClient({ token, environment: SquareEnvironment.Sandbox })
-    const out = await getSquareItemsWithModifiers({ secretsArn: 'n/a' } as any, client)
+    const out = await ssr.getSquareItemsWithModifiers({ id: '1234', secretsArn: 'n/a' } as any, client)
     // No strict expectations—just proves end-to-end wiring
     console.log(`Fetched ${JSON.stringify(sanitizeBigInts(out), null, 2)} items with modifiers`)
   })
