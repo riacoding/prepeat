@@ -100,7 +100,7 @@ export async function GET(req: NextRequest) {
         squareEnv: env.SQUARE_ENV === 'production' ? 'production' : 'sandbox',
         updatedAt: new Date().toISOString(),
       },
-      env.Environment!
+      env.ENVIRONMENT!
     )
 
     await cookieBasedClient.models.Merchant.update({
