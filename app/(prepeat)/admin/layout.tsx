@@ -9,7 +9,7 @@ export default async function AdminLayout({ children }: { children: ReactNode })
   if (!res || !res.user?.userId) redirect('/login')
 
   const userRecord = await getUserBySub(res.user?.userId)
-  console.log('userRecord', 'admin layout', userRecord)
+  console.log('userRecord', 'admin layout', userRecord?.id)
   //if (!userRecord) redirect('/login')
 
   const merchant = userRecord.merchantId ? await getServerMerchant(userRecord.merchantId) : null
