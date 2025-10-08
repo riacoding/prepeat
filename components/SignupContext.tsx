@@ -1,5 +1,6 @@
 'use client'
 
+import { useSafeAuthenticator } from '@/hooks/useSafeAuthenticator'
 import { Merchant } from '@/types'
 import { usePathname, useRouter } from 'next/navigation'
 import { createContext, useContext, useState, useMemo, useEffect, ReactNode } from 'react'
@@ -32,9 +33,16 @@ export function SignupProvider({ children }: { children: ReactNode }) {
   const [userId, setUserId] = useState('')
   const [merchant, setMerchant] = useState<Merchant | null>(null)
   const [hasHydrated, setHasHydrated] = useState(false)
+  const { prepEatUser } = useSafeAuthenticator()
 
   const router = useRouter()
   const pathname = usePathname()
+
+  useEffect(() => {
+    if (prepEatUser) {
+      setUserId(prepEatUser.id)
+    }
+  }, [prepEatUser])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
