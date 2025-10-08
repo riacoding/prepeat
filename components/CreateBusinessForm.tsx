@@ -95,6 +95,7 @@ export default function CreateBusinessForm() {
       const { data: merchant, errors } = await client.models.Merchant.create(
         {
           handle: data.handle,
+          secretsArn: 'provisional',
           businessName: data.businessName,
           squareMerchantId: 'provisional',
           accessToken: 'provisional',
