@@ -142,7 +142,7 @@ const schema = a
         accessToken: a.string(),
         refreshToken: a.string(),
         tokenExpiresAt: a.datetime(),
-        tokenrefreshedAt: a.datetime(),
+        tokenRefreshedAt: a.datetime(),
         businessName: a.string().required(),
         locationIds: a.string().array().required(),
         s3ItemKey: a.string(),
