@@ -69,6 +69,7 @@ export async function getAppSecret(env: string): Promise<AppSecret> {
 }
 
 export async function upsertMerchantSecret(secret: MerchantSecret, env: string): Promise<string> {
+  console.log('upserting merchant secret:', secret.merchantId, env)
   const client = sm
   const SecretId = secretIdFor(secret.merchantId, env)
   const SecretString = JSON.stringify({
