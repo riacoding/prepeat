@@ -5,14 +5,12 @@ import { useSignupContext } from './SignupContext'
 import { Button } from '@/components/ui/button'
 import { getAuthUrl } from '@/lib/ssr-actions'
 import Link from 'next/link'
-import { PublicMerchant } from '@/types'
-import { useMerchant } from './MerchantContext'
 
 export default function LinkAccount() {
   const [url, setUrl] = useState<string | null>(null)
   const [authState, setAuthState] = useState<string | null>(null)
   const [isConfiguring, setIsConfiguring] = useState(true)
-  const merchant = useMerchant()
+  const { merchant } = useSignupContext()
 
   useEffect(() => {
     async function getUrl() {
