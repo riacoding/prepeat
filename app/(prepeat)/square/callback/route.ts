@@ -55,6 +55,7 @@ export async function GET(req: NextRequest) {
     const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL}/square/callback`
     console.log('redirectUri', redirectUri)
 
+    console.log('Debug:env', env)
     const appSecret = await getAppSecret(env.ENVIRONMENT!)
 
     if (!appSecret) {
