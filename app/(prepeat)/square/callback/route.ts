@@ -55,7 +55,7 @@ export async function GET(req: NextRequest) {
     const redirectUri = `${process.env.NEXT_PUBLIC_BASE_URL}/square/callback`
     console.log('redirectUri', redirectUri)
 
-    const appSecret = await getAppSecret(env.Environment!)
+    const appSecret = await getAppSecret(env.ENVIRONMENT!)
 
     if (!appSecret) {
       console.error('Missing app secret')
@@ -106,7 +106,7 @@ export async function GET(req: NextRequest) {
       id: prepEatMerchantId,
       secretsArn: secretARN,
       tokenExpiresAt: expiresAt,
-      tokenrefreshedAt: new Date().toISOString(),
+      tokenRefreshedAt: new Date().toISOString(),
       squareMerchantId: merchantId,
       businessName: merchantProfile.merchant?.businessName || 'Unnamed Business',
       locationIds: locationIds || [],
