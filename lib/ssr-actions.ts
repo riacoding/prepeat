@@ -978,7 +978,7 @@ export async function syncMenuItems(merchant: PublicMerchant) {
             modifierListIds: Array.from(itemLevelListIds.keys()),
             itemVersion: item.version ? String(item.version) : null,
             variationVersion: vObj.version ? String(vObj.version) : null,
-            catalogData, // your snapshot/cache
+            catalogData: JSON.stringify(catalogData), // your snapshot/cache
           })
         } catch (err) {
           console.log(`Error upserting catalog variation: ${catalogVariationId}`, err)
