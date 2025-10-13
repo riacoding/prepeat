@@ -302,6 +302,7 @@ const schema = a
         merchantId: a.id().required(),
         menuId: a.id().required(), // link to Menu
         catalogItemId: a.id().required(), // link to CatalogItem
+        catalogVariationId: a.string(),
         s3ImageKey: a.string(), // optional custom image
         customName: a.string(), // optional name override
         isFeatured: a.boolean().default(false),

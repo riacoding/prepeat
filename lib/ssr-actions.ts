@@ -675,7 +675,7 @@ export async function deleteMenuItemsForMenu(menuId: string): Promise<void> {
 export async function getCatalogItems(merchantId: string): Promise<HydratedCatalog[] | []> {
   const authMode = (await isAuth()) ? 'userPool' : 'iam'
   try {
-    const { data, errors } = await cookieBasedClient.models.CatalogItem.listCatalogItemByMerchantId(
+    const { data, errors } = await cookieBasedClient.models.CatalogVariation.listCatalogVariationByMerchantId(
       { merchantId },
       {
         authMode,
@@ -951,7 +951,10 @@ export async function syncMenuItems(merchant: PublicMerchant) {
 
         // Minimal payload you upsert
         const catalogData = {
+          itemId: item.id,
+          catalogVariationId,
           itemName: item.itemData.name ?? '',
+          itemDescription: item.itemData.description ?? '',
           variationName: v.name ?? '',
           sku: v.sku ?? null,
           price: v.priceMoney?.amount ? Number(v.priceMoney.amount) : null,
