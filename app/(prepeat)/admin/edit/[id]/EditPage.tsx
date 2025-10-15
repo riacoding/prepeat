@@ -215,24 +215,21 @@ export default function EditPage({ id }: EditPageParams) {
           <h2 className='font-semibold mb-2'>Select Square Menu Items</h2>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-2 max-h-96 overflow-y-auto border p-2 rounded'>
             {squareItems &&
-              squareItems
-                .map((obj) => obj.item)
-                .filter(isSquareItem)
-                .map((item) => {
-                  const isSelected = selected.has(item.id)
-                  const menuItem = menuItemsMap[item.id]
-                  return (
-                    <label key={item.id} className='flex items-center space-x-2'>
-                      <input type='checkbox' checked={isSelected} onChange={() => toggle(item.id)} />
-                      {isSelected && menuItem?.id && (
-                        <Link href={`/admin/edit/menuItem/${menuItem.id}`}>
-                          <Pencil className='w-4 h-4 text-muted-foreground hover:text-blue-600' />
-                        </Link>
-                      )}
-                      <span>{item.item_data.name}</span>
-                    </label>
-                  )
-                })}
+              squareItems.map((obj) => {
+                const isSelected = selected.has(obj.item.id)
+                const menuItem = menuItemsMap[obj.item.id]
+                return (
+                  <label key={obj.item.id} className='flex items-center space-x-2'>
+                    <input type='checkbox' checked={isSelected} onChange={() => toggle(obj.item.id)} />
+                    {isSelected && menuItem?.id && (
+                      <Link href={`/admin/edit/menuItem/${menuItem.id}`}>
+                        <Pencil className='w-4 h-4 text-muted-foreground hover:text-blue-600' />
+                      </Link>
+                    )}
+                    <span>{obj.item.type}</span>
+                  </label>
+                )
+              })}
           </div>
         </div>
 
