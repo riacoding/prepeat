@@ -231,7 +231,7 @@ const schema = a
         merchantId: a.id().required(),
         modifierListId: a.string().required(), // Square list id
         name: a.string(),
-        modifiers: a.hasMany('Modifier', 'modifierListId'),
+        modifiers: a.hasMany('Modifier', ['merchantId', 'modifierListId']),
         version: a.string(),
         isDeleted: a.boolean().default(false),
         raw: a.json(), // optional: full envelope
@@ -244,7 +244,7 @@ const schema = a
         merchantId: a.id().required(),
         modifierId: a.string().required(), // Square modifier id
         modifierListId: a.string().required(), // Square modifier list id
-        modifierList: a.belongsTo('ModifierList', ['modifierListId']),
+        modifierList: a.belongsTo('ModifierList', ['merchantId', 'modifierListId']),
         name: a.string().required(),
         priceCents: a.integer().required(),
         currency: a.string().required(),
