@@ -244,6 +244,7 @@ const schema = a
         merchantId: a.id().required(),
         modifierId: a.string().required(), // Square modifier id
         modifierListId: a.string().required(), // Square modifier list id
+        modifierList: a.belongsTo('ModifierList', ['merchantId', 'modifierListId']),
         name: a.string().required(),
         priceCents: a.integer().required(),
         currency: a.string().required(),
