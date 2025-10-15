@@ -203,35 +203,19 @@ const schema = a
     CatalogVariation: a
       .model({
         merchantId: a.id().required(),
-
-        // Primary linking key in your app (Square catalog_object_id of the VARIATION)
         catalogVariationId: a.string().required(),
-
-        // Parent Square Item envelope id (handy for grouping variations)
         parentItemId: a.string().required(),
-
-        // (Legacy compat) keep if you referenced this name elsewhere; otherwise omit
         squareItemId: a.string(), // ← same value as parentItemId; mark as deprecated later
         variationName: a.string(),
-        // Useful denormalized fields (optional but nice for UI/queries)
         itemName: a.string(),
+        itemDescription: a.string(),
         sku: a.string(),
-
-        // Money: store as minor units (cents) to avoid BigInt/float issues
         priceCents: a.integer(),
         currency: a.string(),
-
-        // Modifiers assigned at the Item level (apply to all variations of that item)
         modifierListIds: a.string().array(),
-
-        // Store envelope versions as strings (Square returns BigInt)
         itemVersion: a.string(),
         variationVersion: a.string(),
-
-        // Your snapshot (keep what you need from Square)
         catalogData: a.json().required(),
-
-        // Optional: blob key / media
         s3ItemKey: a.string(),
       })
       .identifier(['merchantId', 'catalogVariationId'])
@@ -247,15 +231,29 @@ const schema = a
         merchantId: a.id().required(),
         modifierListId: a.string().required(), // Square list id
         name: a.string(),
-        modifiers: a.json(), // [{ id, name, priceCents }]
+        modifiers: a.hasMany('Modifier', 'modifierListId'),
         version: a.string(),
+        isDeleted: a.boolean().default(false),
         raw: a.json(), // optional: full envelope
       })
       .identifier(['merchantId', 'modifierListId'])
-      .secondaryIndexes((idx) => [idx('merchantId')])
+      .secondaryIndexes((index) => [index('merchantId')])
       .authorization((allow) => [allow.groups(['vendor', 'admin']), allow.guest().to(['read'])]),
-
-    // 🆕 Standalone CatalogItem to sync Square catalog
+    Modifier: a
+      .model({
+        merchantId: a.id().required(),
+        modifierId: a.string().required(), // Square modifier id
+        modifierListId: a.string().required(), // Square modifier list id
+        name: a.string().required(),
+        priceCents: a.integer().required(),
+        currency: a.string().required(),
+        version: a.string().required(),
+        isDeleted: a.boolean().default(false),
+        raw: a.json(), // optional: full envelope
+      })
+      .identifier(['merchantId', 'modifierId'])
+      .secondaryIndexes((index) => [index('merchantId'), index('modifierListId')])
+      .authorization((allow) => [allow.groups(['vendor', 'admin']), allow.guest().to(['read'])]),
     CatalogItem: a
       .model({
         squareItemId: a.string().required(), // Square object ID

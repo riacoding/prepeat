@@ -723,10 +723,10 @@ export async function getAllSquareCatalogItems(): Promise<SquareCatalogObject[]>
   }
 }
 
-//fetch from appsync
+//fetch from appsync sku variations
 export async function fetchMenuItemsWithModifiers(squareItemIds: string[]): Promise<ItemWithModifiers[]> {
   const authMode = (await isAuth()) ? 'userPool' : 'identityPool'
-  const { data, errors } = await cookieBasedClient.models.CatalogItem.list({
+  const { data, errors } = await cookieBasedClient.models.CatalogVariation.list({
     authMode,
   })
 
@@ -737,9 +737,7 @@ export async function fetchMenuItemsWithModifiers(squareItemIds: string[]): Prom
   //console.log('fetchMenuItemsWithModifiers', data)
   const allItems = data ?? []
 
-  const filtered = allItems.filter((item) => squareItemIds.includes(item.squareItemId))
-
-  //console.log('Filtered', filtered)
+  const filtered = allItems.filter((item) => squareItemIds.includes(item.catalogVariationId ?? ''))
 
   // Hydrate and return in expected format
   const hydrated: ItemWithModifiers[] = filtered.map((ci) => {
@@ -971,17 +969,20 @@ export async function syncMenuItems(merchant: PublicMerchant) {
         try {
           await upsertCatalogVariationItem({
             merchantId: merchant.id,
-            catalogVariationId, // string
+            catalogVariationId,
             parentItemId: parentItemId!,
             squareItemId: parentItemId!,
-            variationName,
             sku,
             priceCents: priceAmount,
             currency,
             modifierListIds: Array.from(itemLevelListIds.keys()),
+            itemName: item.itemData.name ?? '',
+            itemDescription: item.itemData.descriptionPlaintext ?? '',
+            variationName,
             itemVersion: item.version ? String(item.version) : null,
             variationVersion: vObj.version ? String(vObj.version) : null,
-            catalogData: JSON.stringify(catalogData), // your snapshot/cache
+            catalogData: JSON.stringify(catalogData), // snapshot/cache
+            s3ItemKey: item.itemData.imageIds?.[0] ?? null,
           })
         } catch (err) {
           console.log(`Error upserting catalog variation: ${catalogVariationId}`, err)

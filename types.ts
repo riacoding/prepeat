@@ -74,7 +74,7 @@ export const menuSelectionSet = [
   'menuItems.*',
 ] as const
 
-export interface NormalizedTopping {
+export interface NormalizedModifier {
   id: string
   name: string
   price: number // in cents
@@ -123,7 +123,7 @@ export type NormalizedItem = {
   description?: string
   price: number
   image?: string
-  toppings: NormalizedTopping[]
+  modifiers: NormalizedModifier[]
   customName?: string
   sortOrder: number
   isFeatured: boolean
@@ -140,7 +140,7 @@ export type CartTopping = {
 
 export type CartItem = NormalizedItem & {
   quantity: number
-  toppings: NormalizedTopping[]
+  modifiers: NormalizedModifier[]
 }
 
 export type SquareMoney = {

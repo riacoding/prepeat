@@ -4,6 +4,7 @@ import { format } from 'date-fns'
 import { createHash } from 'crypto'
 import { twMerge } from 'tailwind-merge'
 import { customAlphabet } from 'nanoid'
+import { ItemWithModifiers } from './ssr-actions'
 
 // Crockford Base32 (no I,L,O,U)
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
@@ -109,23 +110,21 @@ export const orderNumberToTicket = (orderNumber: string) => {
 export function normalizeSquareItem({
   item,
   modifierLists,
-}: {
-  item: SquareItem
-  modifierLists: SquareModifierList[]
+}: ItemWithModifiers
 }): NormalizedItem {
   return {
     id: item.id,
-    name: item.item_data.name,
-    description: item.item_data.description,
-    price: item.item_data.variations?.[0]?.item_variation_data?.price_money?.amount ?? 0,
-    image: item.item_data.image_url ?? '/placeholder.svg',
+    name: item.itemData.name ?? '',
+    description: item.itemData.description ?? '',
+    price: item.itemData.variations,
+    image: item.itemData.imageIds ?? '/placeholder.svg',
     catalogItemId: item.id,
-    catalogVariationId: item.item_data.variations?.[0]?.id ?? '0',
+    catalogVariationId: item.itemData.variations?.[0]?.id ?? '0',
     sortOrder: 0,
     isFeatured: false,
     menuItemId: '0',
     customName: undefined,
-    toppings: modifierLists.flatMap(
+    modifiers: modifierLists.flatMap(
       (group) =>
         group.modifier_list_data?.modifiers?.map((mod) => ({
           id: mod.id,
