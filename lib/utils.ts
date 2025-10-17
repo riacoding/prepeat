@@ -4,7 +4,7 @@ import { format } from 'date-fns'
 import { createHash } from 'crypto'
 import { twMerge } from 'tailwind-merge'
 import { customAlphabet } from 'nanoid'
-import { ItemWithModifiers } from './ssr-actions'
+import { ItemWithModifiers, VariationWithModifiers } from '@/types'
 
 // Crockford Base32 (no I,L,O,U)
 const ALPHABET = '0123456789ABCDEFGHJKMNPQRSTVWXYZ'
@@ -105,35 +105,4 @@ export const orderNumberToTicket = (orderNumber: string) => {
   const ticket = `${locationId}-${dateStr}-${orderNumber}` // e.g., 20250505-003
   console.log('ticket', ticket)
   return ticket
-}
-
-export function normalizeSquareItem({
-  item,
-  modifierLists,
-}: ItemWithModifiers
-}): NormalizedItem {
-  return {
-    id: item.id,
-    name: item.itemData.name ?? '',
-    description: item.itemData.description ?? '',
-    price: item.itemData.variations,
-    image: item.itemData.imageIds ?? '/placeholder.svg',
-    catalogItemId: item.id,
-    catalogVariationId: item.itemData.variations?.[0]?.id ?? '0',
-    sortOrder: 0,
-    isFeatured: false,
-    menuItemId: '0',
-    customName: undefined,
-    modifiers: modifierLists.flatMap(
-      (group) =>
-        group.modifier_list_data?.modifiers?.map((mod) => ({
-          id: mod.id,
-          name: mod.modifier_data.name,
-          price: mod.modifier_data.price_money?.amount ?? 0,
-          groupName: group.modifier_list_data?.name ?? 'Modifiers',
-          isDefault: mod.modifier_data.on_by_default ?? false,
-          isLocked: false,
-        })) ?? []
-    ),
-  }
 }

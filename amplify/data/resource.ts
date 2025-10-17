@@ -291,7 +291,7 @@ const schema = a
         isOffline: a.boolean().default(false),
         theme: a.json(),
         useImages: a.boolean().default(true),
-        menuItems: a.hasMany('MenuItem', 'menuId'), // 🆕 one-to-many
+        menuItems: a.hasMany('MenuItem', 'menuId'),
       })
       .secondaryIndexes((index) => [index('locationId'), index('merchantId')])
       .authorization((allow) => [allow.owner(), allow.groups(['admin', 'vendor']), allow.guest().to(['read'])]),
@@ -300,8 +300,8 @@ const schema = a
         id: a.id().required(),
         merchantId: a.id().required(),
         menuId: a.id().required(), // link to Menu
-        catalogItemId: a.id().required(), // link to CatalogItem
-        catalogVariationId: a.string(),
+        catalogItemId: a.id().required(), // link to CatalogItem legacy
+        catalogVariationId: a.string().required(),
         s3ImageKey: a.string(), // optional custom image
         customName: a.string(), // optional name override
         isFeatured: a.boolean().default(false),

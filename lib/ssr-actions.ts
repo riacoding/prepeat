@@ -62,8 +62,18 @@ import {
   ActionState,
   SquareItemVariation,
   CatalogVariationInput,
+  CatalogVariation,
+  AuthMode,
+  NormalizedItem,
+  ModifierListObject,
+  VariationWithModifiers,
+  ItemWithModifiers,
+  isItemObject,
+  isModifierListObject,
+  isModifierObject,
+  isVariationObject,
 } from '@/types'
-import { extractReceiptItems, isEmail, md5Hex, orderNumberToTicket } from './utils'
+import { extractReceiptItems, isEmail, md5Hex } from './utils'
 import { Square, SquareClient, SquareEnvironment } from 'square'
 import { randomUUID } from 'crypto'
 import { sanitizeBigInts } from '@/amplify/functions/webhookProcessor/util'
@@ -72,11 +82,6 @@ import { MerchantSecret } from '@/app/(prepeat)/square/callback/secrets-upsert'
 const SQUARE_BASE_URL = 'https://connect.squareupsandbox.com/v2'
 const SQUARE_TOKEN = process.env.SQUARE_ACCESS_TOKEN
 
-// Narrowed envelope types
-type ItemObject = Square.CatalogObject & { type: 'ITEM'; itemData: Square.CatalogItem }
-type VariationObject = Square.CatalogObject & { type: 'ITEM_VARIATION'; itemVariationData: Square.CatalogItemVariation }
-type ModifierListObject = Square.CatalogObject & { type: 'MODIFIER_LIST'; modifierListData: Square.CatalogModifierList }
-type ModifierObject = Square.CatalogObject & { type: 'MODIFIER'; modifierData: Square.CatalogModifier }
 // allow test to inject a no-op saver
 type SaveModifierListFn = (input: {
   merchantId: string
@@ -84,28 +89,6 @@ type SaveModifierListFn = (input: {
   name: string
   modifiers: Array<{ id: string; name: string; priceMoney: { amount: string; currency: string } }>
 }) => Promise<any>
-
-export type ItemWithModifiers = {
-  item: ItemObject // envelope: has id/version + itemData
-  modifierLists: ModifierListObject[] // envelopes: have id/version + modifierListData
-}
-
-const isItemObject = (
-  o: Square.CatalogObject
-): o is Square.CatalogObject & { type: 'ITEM'; itemData: Square.CatalogItem } => o.type === 'ITEM' && !!o.itemData
-
-const isVariationObject = (
-  o: Square.CatalogObject
-): o is Square.CatalogObject & { type: 'ITEM_VARIATION'; itemVariationData: Square.CatalogItemVariation } =>
-  o.type === 'ITEM_VARIATION' && !!o.itemVariationData
-
-const isModifierListObject = (o: Square.CatalogObject | undefined): o is ModifierListObject =>
-  !!o && o.type === 'MODIFIER_LIST' && !!o.modifierListData
-
-const isModifierObject = (
-  o?: Square.CatalogObject
-): o is Square.CatalogObject & { type: 'MODIFIER'; modifierData: Square.CatalogModifier } =>
-  !!o && o.type === 'MODIFIER' && !!o.modifierData
 
 const bigIntToJSON = (_: string, v: unknown) => (typeof v === 'bigint' ? v.toString() : v)
 
@@ -723,39 +706,83 @@ export async function getAllSquareCatalogItems(): Promise<SquareCatalogObject[]>
   }
 }
 
+async function fetchModifierListWithModifiers(
+  merchantId: string,
+  modifierListId: string,
+  authMode: AuthMode
+): Promise<ModifierListObject | null> {
+  const { data: ml, errors: e1 } = await cookieBasedClient.models.ModifierList.get(
+    { merchantId, modifierListId },
+    { authMode /* optional: selectionSet to trim fields */ }
+  )
+  if (e1?.length) {
+    console.error('ModifierList.get error', modifierListId, e1)
+    return null
+  }
+  if (!ml) return null
+
+  // Pull all Modifiers for this list. (Uses your secondary index on modifierListId)
+  const { data: mods, errors: e2 } = await cookieBasedClient.models.Modifier.listModifierByModifierListId(
+    { modifierListId },
+    { authMode }
+  )
+  if (e2?.length) {
+    console.error('Modifier.list error', modifierListId, e2)
+    return null
+  }
+
+  return {
+    id: modifierListId,
+    type: 'MODIFIER_LIST',
+    modifierListData: (mods ?? []) as unknown as Square.CatalogModifierList,
+  }
+}
+
 //fetch from appsync sku variations
-export async function fetchMenuItemsWithModifiers(squareItemIds: string[]): Promise<ItemWithModifiers[]> {
+export async function fetchMenuItemsWithModifiers(
+  merchantId: string,
+  catalogVariationIds: string[]
+): Promise<VariationWithModifiers[]> {
   const authMode = (await isAuth()) ? 'userPool' : 'identityPool'
-  const { data, errors } = await cookieBasedClient.models.CatalogVariation.list({
-    authMode,
-  })
+  const { data: allVars, errors } = await cookieBasedClient.models.CatalogVariation.listCatalogVariationByMerchantId(
+    { merchantId },
+    {
+      authMode,
+    }
+  )
 
   if (errors && errors.length > 0) {
-    console.error('Error fetching CatalogItems:', errors)
+    console.error('Error fetching CatalogVariations:', errors)
     return []
   }
-  //console.log('fetchMenuItemsWithModifiers', data)
-  const allItems = data ?? []
+  const want = new Set(catalogVariationIds)
+  const filtered = (allVars ?? []).filter((v) => v.catalogVariationId && want.has(v.catalogVariationId))
 
-  const filtered = allItems.filter((item) => squareItemIds.includes(item.catalogVariationId ?? ''))
+  if (!filtered.length) return []
 
-  // Hydrate and return in expected format
-  const hydrated: ItemWithModifiers[] = filtered.map((ci) => {
-    const parsed = JSON.parse(ci.catalogData as unknown as string) as {
-      item: ItemObject
-      modifierLists?: ModifierListObject[]
+  // 3) Collect unique modifierListIds across the filtered variations
+  const allListIds = new Set<string>()
+  for (const v of filtered) {
+    for (const id of v.modifierListIds ?? []) {
+      if (id) allListIds.add(id)
     }
-    const { item, modifierLists } = parsed as {
-      item: ItemObject
-      modifierLists?: ModifierListObject[]
-    }
-    //console.log('appsync item', item)
-    return {
-      item,
-      modifierLists: modifierLists ?? [],
-    }
+  }
+
+  const listsArr = await Promise.all(
+    Array.from(allListIds).map((id) => fetchModifierListWithModifiers(merchantId, id, authMode))
+  )
+  const listById = new Map<string, ModifierListObject>(
+    listsArr.filter((x): x is ModifierListObject => !!x).map((x) => [x.id, x])
+  )
+
+  const result: VariationWithModifiers[] = filtered.map((v) => {
+    const lists =
+      (v.modifierListIds ?? []).map((id) => listById.get(id as string)).filter((x): x is ModifierListObject => !!x) ||
+      []
+    return { item: v as CatalogVariation, modifierLists: lists }
   })
-  return hydrated
+
+  return result
 }
 
 export async function getMenuItemWithCatalogItem(id: string) {

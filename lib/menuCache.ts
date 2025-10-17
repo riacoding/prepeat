@@ -45,7 +45,7 @@ export async function getCachedMenu(merchantId: string, loc: string): Promise<Fe
     console.error('[MenuCache] MENU_CACHE_TABLE env var is not set')
     // fallback: compute without caching so the page still renders
 
-    return await fetchMenuWithItems(loc)
+    return await fetchMenuWithItems(merchantId, loc)
   }
 
   // 1) Try cache
@@ -58,7 +58,7 @@ export async function getCachedMenu(merchantId: string, loc: string): Promise<Fe
   }
   await putMetric('Miss', 1)
   // 2) Cache miss → compute
-  const computed = await fetchMenuWithItems(loc)
+  const computed = await fetchMenuWithItems(merchantId, loc)
 
   // 3) Persist snapshot (best-effort)
   const item: Snapshot = {

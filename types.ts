@@ -1,13 +1,16 @@
 import { type Schema } from '@/amplify/data/resource'
 import { SelectionSet } from 'aws-amplify/data'
+import { Square } from 'square'
 import { Timestamp } from 'next/dist/server/lib/cache-handlers/types'
 
+export type AuthMode = 'userPool' | 'identityPool'
 export type Menu = Schema['Menu']['type']
 export type Order = Schema['Order']['type'] & { rawData: SquareOrder }
 export type MenuItem = Schema['MenuItem']['type']
 export type UpdateMenuInput = Schema['Menu']['updateType']
 export type CatalogItem = Schema['CatalogItem']['type']
 export type Merchant = Schema['Merchant']['type']
+export type CatalogVariation = Schema['CatalogVariation']['type']
 export type UpdateMerchantInput = Schema['Merchant']['updateType']
 export type SafeMenuItem = RemoveFunctions<Schema['MenuItem']['type']>
 export type User = Schema['User']['type']
@@ -16,6 +19,59 @@ export type SortOption = 'Newest' | 'Oldest' | 'All Day'
 export type CodeStatus = 'NEW' | 'RESERVED' | 'USED' | 'EXPIRED'
 
 export type ActionState = { ok: boolean; message: string }
+
+// Narrowed envelope types
+export type ItemObject = Square.CatalogObject & { type: 'ITEM'; itemData: Square.CatalogItem }
+export type VariationObject = Square.CatalogObject & {
+  type: 'ITEM_VARIATION'
+  itemVariationData: Square.CatalogItemVariation
+}
+export type ModifierListObject = Square.CatalogObject & {
+  type: 'MODIFIER_LIST'
+  modifierListData: Square.CatalogModifierList
+}
+export type ModifierObject = Square.CatalogObject & { type: 'MODIFIER'; modifierData: Square.CatalogModifier }
+
+export type ItemWithModifiers = {
+  item: ItemObject
+  modifierLists: ModifierListObject[] // envelopes: have id/version + modifierListData
+}
+
+export type VariationWithModifiers = {
+  item: CatalogVariation
+  modifierLists: ModifierListObject[] // envelopes: have id/version + modifierListData
+}
+
+export const isItemObject = (
+  o: Square.CatalogObject
+): o is Square.CatalogObject & { type: 'ITEM'; itemData: Square.CatalogItem } => o.type === 'ITEM' && !!o.itemData
+
+export const isVariationObject = (
+  o: Square.CatalogObject
+): o is Square.CatalogObject & { type: 'ITEM_VARIATION'; itemVariationData: Square.CatalogItemVariation } =>
+  o.type === 'ITEM_VARIATION' && !!o.itemVariationData
+
+export const isModifierListObject = (o: Square.CatalogObject | undefined): o is ModifierListObject =>
+  !!o && o.type === 'MODIFIER_LIST' && !!o.modifierListData
+
+export const isModifierObject = (
+  o?: Square.CatalogObject
+): o is Square.CatalogObject & { type: 'MODIFIER'; modifierData: Square.CatalogModifier } =>
+  !!o && o.type === 'MODIFIER' && !!o.modifierData
+
+export function isItem(obj: Square.CatalogObject): obj is Square.CatalogObject & {
+  type: 'ITEM'
+  itemData: Square.CatalogItem
+} {
+  return obj.type === 'ITEM' && !!obj.itemData
+}
+
+export function isVariation(obj: Square.CatalogObject): obj is Square.CatalogObject & {
+  type: 'ITEM_VARIATION'
+  itemVariationData: Square.CatalogItemVariation
+} {
+  return obj.type === 'ITEM_VARIATION' && !!obj.itemVariationData
+}
 
 export type RequestCodeResponse = {
   codeHash: string
@@ -313,10 +369,10 @@ export type SquareItem = {
   }
 }
 
-export type SquareCatalogObject = SquareItem | SquareModifier | SquareModifierList | SquareItemVariation
+export type SquareCatalogObject = SquareItem | SquareItemVariation
 
 export type HydratedCatalog = {
-  item: SquareCatalogObject
+  item: Square.CatalogObject.Item | Square.CatalogObject.ItemVariation
   modifierLists: SquareModifierList[]
 }
 
