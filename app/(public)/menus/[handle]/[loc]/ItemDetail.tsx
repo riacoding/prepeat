@@ -9,8 +9,9 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { ChevronLeft } from 'lucide-react'
 import { useMenu } from './MenuProvider'
-import { CartItem, NormalizedItem, NormalizedTopping } from '@/types'
+import { CartItem, ModifierAmplify, ModifierListAmplify, NormalizedItem, NormalizedModifier } from '@/types'
 import { usePublicMerchant } from '@/components/MerchantPublicContext'
+import { formatCurrencyCents } from '@/lib/moneyFormat'
 
 type Topping = {
   id: string
@@ -25,37 +26,44 @@ export default function ItemDetail({ item, handle }: { item: NormalizedItem; han
   const { merchant } = usePublicMerchant()
   const router = useRouter()
   const [quantity, setQuantity] = useState(1)
-  const [selectedToppings, setSelectedToppings] = useState<Record<string, boolean>>({})
+  const [selectedModifiers, setSelectedModifiers] = useState<Record<string, boolean>>({})
 
   useEffect(() => {
     const defaults: Record<string, boolean> = {}
-    item.toppings.forEach((t) => {
-      defaults[t.id] = false // or true if you later support default toppings
+    item.modifierLists?.forEach((t) => {
+      t.modifiers?.forEach((m) => {
+        defaults[m.modifierId] = false // or true if you later support default toppings
+      })
     })
-    setSelectedToppings(defaults)
+    setSelectedModifiers(defaults)
   }, [item])
 
   const toggleTopping = (id: string) => {
-    setSelectedToppings((prev) => ({
+    setSelectedModifiers((prev) => ({
       ...prev,
       [id]: !prev[id],
     }))
   }
 
   const calculateTotal = () => {
-    const toppingTotal = item.toppings.reduce((sum: number, t: NormalizedTopping) => {
-      return selectedToppings[t.id] ? sum + t.price : sum
-    }, 0)
+    let toppingTotal = 0
+    item.modifierLists?.forEach((list) => {
+      toppingTotal += list.modifiers?.reduce((sum: number, m: ModifierAmplify) => {
+        return selectedModifiers[m.modifierId] ? sum + m.priceCents : sum
+      }, 0)
+    })
 
-    return ((item.price + toppingTotal) * quantity) / 100
+    return ((Number(item.price) + toppingTotal) * quantity) / 100
   }
 
   const handleAddToCart = () => {
-    const selected = item.toppings.filter((t: NormalizedTopping) => selectedToppings[t.id])
-    const cartItem: CartItem = {
+    const selected = item.modifierLists.flatMap((list) => {
+      return list.modifiers.filter((t: ModifierAmplify) => selectedModifiers[t.modifierId])
+    })
+    const cartItem: Omit<CartItem, 'lineId'> = {
       ...item,
       quantity,
-      toppings: selected,
+      modifiers: selected,
     }
     console.log('adding item to cart:', cartItem)
     addItem(cartItem)
@@ -85,26 +93,39 @@ export default function ItemDetail({ item, handle }: { item: NormalizedItem; han
       <p className='text-muted-foreground'>{item.description}</p>
       <p className='font-semibold text-lg'>${(item.price / 100).toFixed(2)}</p>
 
-      {/* Toppings */}
-      {item.toppings.length > 0 && (
-        <div>
-          <h2 className='font-semibold mt-4 mb-2'>Toppings</h2>
-          <ul className='space-y-2'>
-            {item.toppings.map((t) => (
-              <li key={t.id} className='flex justify-between items-center'>
-                <label className='flex gap-2 items-center'>
-                  <input
-                    type='checkbox'
-                    checked={selectedToppings[t.id] || false}
-                    onChange={() => toggleTopping(t.id)}
-                  />
-                  {t.name}
-                </label>
-                {t.price > 0 && <span className='text-sm text-gray-500'>+${(t.price / 100).toFixed(2)}</span>}
-              </li>
-            ))}
-          </ul>
-        </div>
+      {/* Toppings/Modifiers */}
+      {Boolean(item?.modifierLists?.length) && (
+        <>
+          {(item.modifierLists as ModifierListAmplify[]).map((list) => (
+            <fieldset key={list.modifierListId ?? list.name} className='mt-6'>
+              <h2 className='font-semibold mb-2'>{list.name}</h2>
+              <ul className='space-y-2'>
+                {list.modifiers?.map((m) => {
+                  const inputId = `mod-${m.modifierId}`
+                  return (
+                    <li key={m.modifierId} className='flex justify-between items-center'>
+                      <label htmlFor={inputId} className='flex gap-2 items-center'>
+                        <input
+                          id={inputId}
+                          type='checkbox'
+                          checked={!!selectedModifiers[m.modifierId]}
+                          onChange={() => toggleTopping(m.modifierId)}
+                        />
+                        <span>{m.name}</span>
+                      </label>
+
+                      {m.priceCents > 0 && (
+                        <span className='text-sm text-gray-500'>
+                          +{formatCurrencyCents(m.priceCents, 'en-US', m.currency)}
+                        </span>
+                      )}
+                    </li>
+                  )
+                })}
+              </ul>
+            </fieldset>
+          ))}
+        </>
       )}
 
       {/* Quantity */}

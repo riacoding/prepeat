@@ -2,9 +2,10 @@
 
 import { cache } from 'react'
 import { fetchMenuItemsWithModifiers, getCurrentMenu } from '@/lib/ssr-actions'
-import { isModifierObject, type NormalizedItem, type VariationWithModifiers } from '@/types'
+import { isModifierObject, Modifier, type NormalizedItem, type VariationWithModifiers } from '@/types'
 import type { Schema } from '@/amplify/data/resource'
 import { sanitizeBigInts } from '@/amplify/functions/webhookProcessor/util'
+import { group } from 'console'
 
 // Narrowed return type — remove lazy fields
 export type EagerMenu = Omit<Schema['Menu']['type'], 'menuItems'> & {
@@ -17,6 +18,7 @@ export type EagerMenu = Omit<Schema['Menu']['type'], 'menuItems'> & {
 }
 
 export async function normalizeSquareItem({ item, modifierLists }: VariationWithModifiers): Promise<NormalizedItem> {
+  console.log('normalizing item:', item.itemName, modifierLists)
   return {
     id: item.catalogVariationId,
     name: item.itemName ?? '',
@@ -29,15 +31,7 @@ export async function normalizeSquareItem({ item, modifierLists }: VariationWith
     isFeatured: false,
     menuItemId: '0',
     customName: undefined,
-    modifiers: modifierLists.flatMap(
-      (group) =>
-        group.modifierListData?.modifiers?.filter(isModifierObject).map((mod) => ({
-          id: mod.id,
-          name: mod.modifierData.name ?? '',
-          price: sanitizeBigInts(mod.modifierData.priceMoney?.amount) ?? 0,
-          groupName: group.modifierListData?.name ?? 'Modifiers',
-        })) ?? []
-    ),
+    modifierLists,
   }
 }
 
@@ -71,7 +65,7 @@ export const fetchMenuWithItems = cache(
     console.time(L('square'))
     const rawItems = await fetchMenuItemsWithModifiers(merchantId, variationIds)
     console.timeEnd(L('square'))
-
+    console.log('fetchMenuWithItems:', rawItems)
     const byVarId = new Map<string, (typeof rawItems)[number]>()
     for (const r of rawItems) {
       if (r.item.catalogVariationId) byVarId.set(r.item.catalogVariationId, r)
@@ -82,9 +76,10 @@ export const fetchMenuWithItems = cache(
       await Promise.all(
         menuItems.map(async (mi) => {
           const catalog = byVarId.get(mi.catalogVariationId)
+          console.log(catalog)
           if (!catalog) return null
 
-          const normalized = await normalizeSquareItem(catalog) // <-- now valid
+          const normalized = await normalizeSquareItem(catalog)
 
           return {
             ...normalized,

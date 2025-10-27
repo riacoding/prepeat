@@ -1,8 +1,8 @@
 import { CartItem } from '@/types'
 
 export const calcItemSubtotalCents = (item: CartItem) => {
-  const toppingsTotal = (item.toppings ?? []).reduce((sum, t) => sum + (t.price ?? 0), 0)
-  return (item.price + toppingsTotal) * item.quantity // all in cents
+  const modifiersTotal = (item.modifiers ?? []).reduce((sum, m) => sum + (m.priceCents ?? 0), 0)
+  return (item.price + modifiersTotal) * item.quantity // all in cents
 }
 
 export const calcCartSubtotalCents = (items: CartItem[]) =>

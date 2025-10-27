@@ -1,13 +1,14 @@
 'use client'
 
 import { useMenu } from '@/app/(public)/menus/[handle]/[loc]/MenuProvider'
-import { CartItem, NormalizedTopping } from '@/types'
+import { CartItem, Modifier, ModifierAmplify, NormalizedModifier } from '@/types'
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react'
 
 type CartContextType = {
   items: CartItem[]
-  addItem: (item: CartItem) => void
+  addItem: (item: Omit<CartItem, 'lineId'>) => void
   removeItem: (id: string) => void
+  removeAllItems: (id: string) => void
   clearCart: () => void
   getTotal: () => number
   getTotalItems: () => number
@@ -75,26 +76,80 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children, handle, lo
     }
   }, [storageKey, items])
 
-  const toppingsMatch = (a: NormalizedTopping[], b: NormalizedTopping[]) => {
+  const cloneItem = (it: Omit<CartItem, 'lineId'> & { lineId?: string }): CartItem => ({
+    ...it,
+    modifiers: it.modifiers.map((m) => ({ ...m })),
+    lineId: it.lineId ?? cartLineId(it.catalogVariationId, it.modifiers, it.quantity),
+  })
+
+  const modifiersMatch = (a: ModifierAmplify[], b: ModifierAmplify[]) => {
     if (a.length !== b.length) return false
-    const idsA = a.map((t) => t.id).sort()
-    const idsB = b.map((t) => t.id).sort()
+    const idsA = a.map((t) => t.modifierId).sort()
+    const idsB = b.map((t) => t.modifierId).sort()
+    console.log('modifiersMatch', idsA, idsB)
     return idsA.every((id, idx) => id === idsB[idx])
   }
 
-  const addItem = (item: CartItem) => {
+  // FAST readable key (good enough for most cases)
+  function cartLineId(itemId: string, mods: ModifierAmplify[], quantity: number) {
+    return signature(itemId, mods, quantity) // or hash this if you want shorter/opaque
+  }
+
+  // Normalize (order-invariant, ignores zero)
+  function normalizeModifiers(mods: ModifierAmplify[], quantity: number) {
+    return mods
+      .filter((m) => (quantity ?? 1) > 0)
+      .map((m) => ({ id: m.modifierId, q: quantity ?? 1 }))
+      .sort((a, b) => a.id.localeCompare(b.id))
+  }
+
+  // Deterministic string for hashing/keys
+  function signature(itemId: string, mods: ModifierAmplify[], quantity: number) {
+    const norm = normalizeModifiers(mods, quantity)
+    return `${itemId}|${norm.map((m) => `${m.id}`).join(',')}`
+  }
+
+  // Optional: short opaque key (async, uses Web Crypto)
+  async function cartLineIdHashed(itemId: string, mods: ModifierAmplify[], quantity: number) {
+    const s = signature(itemId, mods, quantity)
+    const buf = new TextEncoder().encode(s)
+    const digest = await crypto.subtle.digest('SHA-256', buf)
+    const b = Array.from(new Uint8Array(digest))
+      .map((x) => x.toString(16).padStart(2, '0'))
+      .join('')
+    return `${itemId}#${b.slice(0, 12)}` // short prefix
+  }
+
+  const addItem = (raw: Omit<CartItem, 'lineId'>) => {
+    const item = cloneItem(raw)
     setItems((prev) => {
-      const idx = prev.findIndex((i) => i.id === item.id && toppingsMatch(i.toppings, item.toppings))
+      const idx = prev.findIndex((l) => l.lineId === item.lineId)
       if (idx !== -1) {
-        const next = [...prev]
-        next[idx].quantity += item.quantity
-        return next
+        // Merge exact same line (same modifiers)
+        return prev.map((l, i) => (i === idx ? { ...l, quantity: l.quantity + (item.quantity || 1) } : l))
       }
       return [...prev, item]
     })
   }
 
-  const removeItem = (id: string) => setItems((prev) => prev.filter((i) => i.id !== id))
+  const setLineQuantity = (lineId: string, qty: number) => {
+    setItems((prev) =>
+      qty <= 0
+        ? prev.filter((l) => l.lineId !== lineId)
+        : prev.map((l) => (l.lineId === lineId ? { ...l, quantity: qty } : l))
+    )
+  }
+
+  const removeItem = (lineId: string) => {
+    setItems((prev) =>
+      prev.flatMap((l) => (l.lineId === lineId ? (l.quantity > 1 ? [{ ...l, quantity: l.quantity - 1 }] : []) : [l]))
+    )
+  }
+
+  const removeAllItems = (lineId: string) => {
+    setItems((prev) => prev.filter((l) => l.lineId !== lineId))
+  }
+
   const clearCart = () => {
     if (typeof window !== 'undefined') localStorage.removeItem(storageKey)
     setItems([])
@@ -102,14 +157,16 @@ export const CartProvider: React.FC<CartProviderProps> = ({ children, handle, lo
 
   const getTotal = () =>
     items.reduce((sum, item) => {
-      const t = item.toppings.reduce((s, x) => s + x.price, 0)
+      const t = item.modifiers.reduce((s, x) => s + x.priceCents, 0)
       return sum + (item.price + t) * item.quantity
     }, 0)
 
   const getTotalItems = () => items.reduce((s, i) => s + i.quantity, 0)
 
   return (
-    <CartContext.Provider value={{ items, addItem, removeItem, clearCart, getTotal, getTotalItems, menuSlug }}>
+    <CartContext.Provider
+      value={{ items, addItem, removeItem, removeAllItems, clearCart, getTotal, getTotalItems, menuSlug }}
+    >
       {children}
     </CartContext.Provider>
   )

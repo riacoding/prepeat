@@ -39,6 +39,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ url: 'demo', ticketNumber: ticket?.ticketNumber })
     }
 
+    //get prices on server side
+
     const lineItems = cartItems.map((item: any) => ({
       catalogObjectId: item.catalogVariationId,
       quantity: item.quantity.toString(),
@@ -51,12 +53,12 @@ export async function POST(req: NextRequest) {
       metadata: {
         catalogItemId: item.id,
       },
-      modifiers: item.toppings.map((t: any) => ({
+      modifiers: item.modifiers.map((t: any) => ({
         name: t.name,
         quantity: '1',
         basePriceMoney: {
-          amount: BigInt(t.price),
-          currency: 'USD',
+          amount: BigInt(t.priceCents),
+          currency: t.currency,
         },
         catalogObjectId: t.id,
       })),

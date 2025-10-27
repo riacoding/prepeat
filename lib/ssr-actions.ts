@@ -72,6 +72,10 @@ import {
   isModifierListObject,
   isModifierObject,
   isVariationObject,
+  Modifier,
+  ModifierList,
+  ModifierListAmplify,
+  ModifierAmplify,
 } from '@/types'
 import { extractReceiptItems, isEmail, md5Hex } from './utils'
 import { Square, SquareClient, SquareEnvironment } from 'square'
@@ -79,6 +83,8 @@ import { randomUUID } from 'crypto'
 import { sanitizeBigInts } from '@/amplify/functions/webhookProcessor/util'
 import { mockSquareOrderFromCart } from './mockSquareOrderFromCart'
 import { MerchantSecret } from '@/app/(prepeat)/square/callback/secrets-upsert'
+import { SelectionSet } from 'aws-amplify/api'
+import { Schema } from '@/amplify/data/resource'
 const SQUARE_BASE_URL = 'https://connect.squareupsandbox.com/v2'
 const SQUARE_TOKEN = process.env.SQUARE_ACCESS_TOKEN
 
@@ -587,6 +593,7 @@ export async function saveMenuItemsForMenu(menuId: string, selectedCatalogItemId
           menuId,
           merchantId,
           catalogItemId,
+          catalogVariationId: catalogItemId,
           isFeatured: false,
           sortOrder: index,
         },
@@ -611,6 +618,7 @@ export async function createMenuItem(input: CreateMenuItemInput): Promise<SafeMe
       menuId: input.menuId,
       merchantId: input.merchantId,
       catalogItemId: input.catalogItemId,
+      catalogVariationId: input.catalogItemId,
       isFeatured: input.isFeatured ?? false,
       sortOrder: input.sortOrder ?? 0,
     },
@@ -627,6 +635,7 @@ export async function createMenuItem(input: CreateMenuItemInput): Promise<SafeMe
     menuId: data!.menuId,
     merchantId: data!.merchantId,
     catalogItemId: data!.catalogItemId,
+    catalogVariationId: data!.catalogVariationId,
     s3ImageKey: data!.s3ImageKey,
     customName: data!.customName,
     isFeatured: data!.isFeatured,
@@ -655,7 +664,7 @@ export async function deleteMenuItemsForMenu(menuId: string): Promise<void> {
   )
 }
 
-export async function getCatalogItems(merchantId: string): Promise<HydratedCatalog[] | []> {
+export async function getCatalogItems(merchantId: string): Promise<CatalogVariation[] | []> {
   const authMode = (await isAuth()) ? 'userPool' : 'iam'
   try {
     const { data, errors } = await cookieBasedClient.models.CatalogVariation.listCatalogVariationByMerchantId(
@@ -669,11 +678,16 @@ export async function getCatalogItems(merchantId: string): Promise<HydratedCatal
       throw new Error(errors.map((e) => e.message).join(', '))
     }
 
-    const hydrated = data.map((item) =>
-      typeof item.catalogData === 'string' ? (JSON.parse(item.catalogData) as HydratedCatalog) : null
-    )
+    // const hydrated = data.map((item) => {
+    //   const catalogData = typeof item.catalogData === 'string' ? (JSON.parse(item.catalogData) as VariationWithModifiers) : null
+    //   return {
+    //     ...item,
+    //     catalogData: catalogData || null,
+    //   }
+    // }
+    // )
 
-    return hydrated.filter((item) => item !== null)
+    return data.filter((item) => item !== null)
   } catch (err) {
     console.log(err)
     return []
@@ -710,31 +724,28 @@ async function fetchModifierListWithModifiers(
   merchantId: string,
   modifierListId: string,
   authMode: AuthMode
-): Promise<ModifierListObject | null> {
-  const { data: ml, errors: e1 } = await cookieBasedClient.models.ModifierList.get(
+): Promise<ModifierListAmplify | null> {
+  const selectionSet = ['merchantId', 'modifierListId', 'name', 'version', 'isDeleted', 'modifiers.*'] as const
+  type ListWithModifiers = SelectionSet<Schema['ModifierList']['type'], typeof selectionSet>
+  const { data: list, errors } = await cookieBasedClient.models.ModifierList.get(
     { merchantId, modifierListId },
-    { authMode /* optional: selectionSet to trim fields */ }
+    { authMode, selectionSet /* optional: selectionSet to trim fields */ }
   )
-  if (e1?.length) {
-    console.error('ModifierList.get error', modifierListId, e1)
-    return null
-  }
-  if (!ml) return null
 
-  // Pull all Modifiers for this list. (Uses your secondary index on modifierListId)
-  const { data: mods, errors: e2 } = await cookieBasedClient.models.Modifier.listModifierByModifierListId(
-    { modifierListId },
-    { authMode }
-  )
-  if (e2?.length) {
-    console.error('Modifier.list error', modifierListId, e2)
+  if (errors?.length) {
+    console.error('Modifier.list error', modifierListId, errors)
     return null
   }
+
+  if (!list) return null
 
   return {
-    id: modifierListId,
-    type: 'MODIFIER_LIST',
-    modifierListData: (mods ?? []) as unknown as Square.CatalogModifierList,
+    merchantId,
+    modifierListId,
+    modifiers: (list.modifiers as ModifierAmplify[]) ?? [],
+    isDeleted: list?.isDeleted ?? false,
+    name: list?.name ?? '',
+    version: list?.version ?? '',
   }
 }
 
@@ -771,15 +782,15 @@ export async function fetchMenuItemsWithModifiers(
   const listsArr = await Promise.all(
     Array.from(allListIds).map((id) => fetchModifierListWithModifiers(merchantId, id, authMode))
   )
-  const listById = new Map<string, ModifierListObject>(
-    listsArr.filter((x): x is ModifierListObject => !!x).map((x) => [x.id, x])
+  const listById = new Map<string, ModifierListAmplify>(
+    listsArr.filter((x): x is ModifierListAmplify => !!x).map((x) => [x.modifierListId, x])
   )
 
   const result: VariationWithModifiers[] = filtered.map((v) => {
     const lists =
-      (v.modifierListIds ?? []).map((id) => listById.get(id as string)).filter((x): x is ModifierListObject => !!x) ||
+      (v.modifierListIds ?? []).map((id) => listById.get(id as string)).filter((x): x is ModifierListAmplify => !!x) ||
       []
-    return { item: v as CatalogVariation, modifierLists: lists }
+    return { item: v as CatalogVariation, modifierLists: lists as ModifierListAmplify[] }
   })
 
   return result
@@ -882,6 +893,7 @@ export async function getSquareItemsWithModifiers(
         const rows = (ml.modifierListData.modifiers ?? []).filter(isModifierObject).map((m) => ({
           id: m.id!, // modifier envelope id
           name: m.modifierData.name ?? '',
+          version: String(m?.version),
           priceMoney: m.modifierData.priceMoney
             ? {
                 amount: String(m.modifierData.priceMoney.amount), // BigInt → string
@@ -890,6 +902,8 @@ export async function getSquareItemsWithModifiers(
             : { amount: '0', currency: 'USD' },
         }))
 
+        console.log('Modifiers:', rows)
+        //deps for testing
         if (deps.saveModifierList) {
           await deps.saveModifierList!({
             merchantId: merchant.id,
@@ -904,6 +918,19 @@ export async function getSquareItemsWithModifiers(
             name: ml.modifierListData.name ?? '',
             modifiers: rows,
           })
+          await Promise.all(
+            rows.map((mod) =>
+              upsertModifier({
+                merchantId: merchant.id,
+                modifierId: mod.id,
+                modifierListId: ml.id!,
+                name: mod.name,
+                version: mod.version,
+                isDeleted: false,
+                priceMoney: mod.priceMoney,
+              })
+            )
+          )
         }
       })
     )
@@ -923,12 +950,73 @@ export async function getSquareItemsWithModifiers(
   }
 }
 
+export async function upsertModifier(input: {
+  merchantId: string
+  modifierId: string
+  modifierListId: string
+  name: string
+  version: string
+  isDeleted: boolean
+  priceMoney: { amount: string; currency: string }
+}) {
+  const { data, errors } = await cookieBasedClient.models.Modifier.get(input, { authMode: 'userPool' })
+
+  if (errors?.length) {
+    console.error('Upsert failed:', errors)
+    throw new Error(errors.map((e) => e.message).join(', '))
+  }
+
+  const { priceMoney: _drop, ...rest } = input
+
+  let updateObj = {
+    ...rest,
+    version: sanitizeBigInts(input.version),
+    priceCents: Number(input.priceMoney.amount),
+    currency: input.priceMoney.currency,
+  }
+
+  if (data) {
+    console.log('updating modifier:', input.modifierId)
+    const { data: update, errors: updateErrors } = await cookieBasedClient.models.Modifier.update(updateObj, {
+      authMode: 'userPool',
+    })
+
+    if (updateErrors?.length) {
+      console.error('Upsert failed:', updateErrors)
+      throw new Error(updateErrors.map((e) => e.message).join(', '))
+    }
+  } else {
+    const { data: create, errors: createErrors } = await cookieBasedClient.models.Modifier.create(updateObj, {
+      authMode: 'userPool',
+    })
+
+    if (createErrors?.length) {
+      console.error('Upsert failed:', createErrors)
+      throw new Error(createErrors.map((e) => e.message).join(', '))
+    }
+  }
+
+  return { merchantId: data?.merchantId, modifierId: data?.modifierId }
+}
+
 export async function createModifierList(input: {
   merchantId: string
   modifierListId: string
   name: string
   modifiers: Array<{ id: string; name: string; priceMoney: { amount: string; currency: string } }>
 }) {
+  const { data: existing, errors: existingErrors } = await cookieBasedClient.models.ModifierList.get(
+    { merchantId: input.merchantId, modifierListId: input.modifierListId },
+    { authMode: 'userPool' }
+  )
+
+  if (existingErrors?.length) {
+    console.error('Fetch existing failed:', existingErrors)
+    throw new Error(existingErrors.map((e) => e.message).join(', '))
+  }
+
+  if (existing) return { merchantId: input.merchantId, modifierListId: input.modifierListId }
+
   console.log('Creating ModifierList:', input)
   const { data, errors } = await cookieBasedClient.models.ModifierList.create(input, { authMode: 'userPool' })
 
@@ -990,7 +1078,7 @@ export async function syncMenuItems(merchant: PublicMerchant) {
             variationVersion: vObj.version ? String(vObj.version) : null,
           },
           // (optional) full list envelopes if you want names, etc.
-          modifierLists,
+          modifierLists: itemLevelListIds,
         }
 
         try {
@@ -1008,7 +1096,7 @@ export async function syncMenuItems(merchant: PublicMerchant) {
             variationName,
             itemVersion: item.version ? String(item.version) : null,
             variationVersion: vObj.version ? String(vObj.version) : null,
-            catalogData: JSON.stringify(catalogData), // snapshot/cache
+            catalogData: JSON.stringify(sanitizeBigInts(catalogData)), // snapshot/cache
             s3ItemKey: item.itemData.imageIds?.[0] ?? null,
           })
         } catch (err) {

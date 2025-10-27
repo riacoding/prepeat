@@ -13,7 +13,7 @@ export default function MenuDisplay() {
   const { menu, items, location } = useMenu()
   const { merchant } = usePublicMerchant()
   const merchantLogo = merchant?.s3ItemKey
-
+  console.log('items:', items)
   return (
     <div className='container max-w-md mx-auto pb-20'>
       <main className='p-4'>

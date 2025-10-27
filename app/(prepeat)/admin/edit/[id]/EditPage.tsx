@@ -8,7 +8,16 @@ import { Input } from '@/components/ui/input'
 import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { HydratedCatalog, isItem, MenuItem, SafeMenuItem, SquareCatalogObject, SquareItem, type Menu } from '@/types'
+import {
+  CatalogVariation,
+  HydratedCatalog,
+  isItem,
+  MenuItem,
+  SafeMenuItem,
+  SquareCatalogObject,
+  SquareItem,
+  type Menu,
+} from '@/types'
 import {
   createMenuItem,
   deleteMenuItem,
@@ -41,7 +50,7 @@ interface EditPageParams {
 
 export default function EditPage({ id }: EditPageParams) {
   const merchant = useMerchant()
-  const [squareItems, setSquareItems] = useState<HydratedCatalog[] | null>()
+  const [squareItems, setSquareItems] = useState<CatalogVariation[] | null>()
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [menuItemsMap, setMenuItemsMap] = useState<Record<string, SafeMenuItem>>({})
 
@@ -98,32 +107,37 @@ export default function EditPage({ id }: EditPageParams) {
   const { register, handleSubmit, setValue, reset, watch } = useForm<FormValues>()
   const [loading, setLoading] = useState(true)
   const menuName = watch('name')
-  const toggle = async (catalogItemId: string) => {
+  const toggle = async (catalogVariationId: string) => {
     if (!menuId) {
       console.error('Missing menuId when trying to create MenuItem')
       return
     }
-    if (selected.has(catalogItemId)) {
+    if (selected.has(catalogVariationId)) {
       // Deselect → delete the MenuItem
-      const menuItem = menuItemsMap[catalogItemId]
+      const menuItem = menuItemsMap[catalogVariationId]
       if (menuItem?.id) {
         await deleteMenuItem(menuItem.id)
         setMenuItemsMap((prev) => {
           const copy = { ...prev }
-          delete copy[catalogItemId]
+          delete copy[catalogVariationId]
           return copy
         })
       }
       setSelected((prev) => {
         const copy = new Set(prev)
-        copy.delete(catalogItemId)
+        copy.delete(catalogVariationId)
         return copy
       })
     } else {
       // Select → create MenuItem
-      const newMenuItem = await createMenuItem({ menuId, catalogItemId, merchantId: merchant.id })
-      setMenuItemsMap((prev) => ({ ...prev, [catalogItemId]: newMenuItem }))
-      setSelected((prev) => new Set(prev).add(catalogItemId))
+      const newMenuItem = await createMenuItem({
+        menuId,
+        catalogItemId: catalogVariationId,
+        catalogVariationId,
+        merchantId: merchant.id,
+      })
+      setMenuItemsMap((prev) => ({ ...prev, [catalogVariationId]: newMenuItem }))
+      setSelected((prev) => new Set(prev).add(catalogVariationId))
     }
   }
 
@@ -215,22 +229,22 @@ export default function EditPage({ id }: EditPageParams) {
           <h2 className='font-semibold mb-2'>Select Square Menu Items</h2>
           <div className='grid grid-cols-1 md:grid-cols-2 gap-2 max-h-96 overflow-y-auto border p-2 rounded'>
             {squareItems &&
-              squareItems.map(({ item, modifierLists }) => {
-                if (isItem(item)) {
-                  const isSelected = selected.has(item.id)
-                  const menuItem = menuItemsMap[item.id]
-                  return (
-                    <label key={item.id} className='flex items-center space-x-2'>
-                      <input type='checkbox' checked={isSelected} onChange={() => toggle(item.id)} />
-                      {isSelected && menuItem?.id && (
-                        <Link href={`/admin/edit/menuItem/${menuItem.id}`}>
-                          <Pencil className='w-4 h-4 text-muted-foreground hover:text-blue-600' />
-                        </Link>
-                      )}
-                      <span>{item.itemData.name}</span>
-                    </label>
-                  )
-                }
+              squareItems.map((item) => {
+                const isSelected = selected.has(item.catalogVariationId)
+                const menuItem = menuItemsMap[item.catalogVariationId]
+                return (
+                  <label key={item.catalogVariationId} className='flex items-center space-x-2'>
+                    <input type='checkbox' checked={isSelected} onChange={() => toggle(item.catalogVariationId)} />
+                    {isSelected && menuItem?.id && (
+                      <Link href={`/admin/edit/menuItem/${menuItem.id}`}>
+                        <Pencil className='w-4 h-4 text-muted-foreground hover:text-blue-600' />
+                      </Link>
+                    )}
+                    <span>
+                      {item.itemName} - {item.variationName}
+                    </span>
+                  </label>
+                )
               })}
           </div>
         </div>

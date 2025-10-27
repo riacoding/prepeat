@@ -25,7 +25,7 @@ export default function CartPage() {
   const [hasHydrated, setHasHydrated] = useState(false)
   const { toast } = useToast()
 
-  const { items: cartItems, removeItem, clearCart, menuSlug } = useCart()
+  const { items: cartItems, removeItem, removeAllItems, clearCart, menuSlug } = useCart()
   const [backLink, setBackLink] = useState('')
   const router = useRouter()
   const { merchant } = usePublicMerchant()
@@ -134,7 +134,7 @@ export default function CartPage() {
         {cartItems.length === 0 ? (
           <div className='text-center py-12'>
             <h2 className='text-xl font-semibold mb-2'>Your cart is empty</h2>
-            <p className='text-muted-foreground mb-6'>Add some delicious pizzas to get started!</p>
+            <p className='text-muted-foreground mb-6'>Add some delicious food to get started!</p>
             <Link href={backLink}>
               <Button>Browse Menu</Button>
             </Link>
@@ -156,16 +156,21 @@ export default function CartPage() {
                       <div className='flex-1'>
                         <div className='flex justify-between'>
                           <h3 className='font-medium'>{item.customName ?? item.name}</h3>
-                          <Button variant='ghost' size='icon' className='h-8 w-8' onClick={() => removeItem(item.id)}>
+                          <Button
+                            variant='ghost'
+                            size='icon'
+                            className='h-8 w-8'
+                            onClick={() => removeAllItems(item.lineId)}
+                          >
                             <Trash2 className='h-4 w-4' />
                           </Button>
                         </div>
                         <p className='text-sm text-muted-foreground'>Qty: {item.quantity}</p>
                         <div className='flex justify-between items-center mt-1'>
                           <div className='text-sm'>
-                            {item.toppings && item.toppings.length > 0 && (
+                            {item.modifiers && item.modifiers.length > 0 && (
                               <div className='text-xs text-muted-foreground'>
-                                {item.toppings.map((topping) => topping.name).join(', ')}
+                                {item.modifiers.map((modifier) => modifier.name).join(', ')}
                               </div>
                             )}
                           </div>

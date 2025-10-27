@@ -10,6 +10,8 @@ export type MenuItem = Schema['MenuItem']['type']
 export type UpdateMenuInput = Schema['Menu']['updateType']
 export type CatalogItem = Schema['CatalogItem']['type']
 export type Merchant = Schema['Merchant']['type']
+export type Modifier = Schema['Modifier']['type']
+export type ModifierList = Schema['ModifierList']['type']
 export type CatalogVariation = Schema['CatalogVariation']['type']
 export type UpdateMerchantInput = Schema['Merchant']['updateType']
 export type SafeMenuItem = RemoveFunctions<Schema['MenuItem']['type']>
@@ -39,7 +41,7 @@ export type ItemWithModifiers = {
 
 export type VariationWithModifiers = {
   item: CatalogVariation
-  modifierLists: ModifierListObject[] // envelopes: have id/version + modifierListData
+  modifierLists: ModifierListAmplify[] // envelopes: have id/version + modifierListData
 }
 
 export const isItemObject = (
@@ -71,6 +73,27 @@ export function isVariation(obj: Square.CatalogObject): obj is Square.CatalogObj
   itemVariationData: Square.CatalogItemVariation
 } {
   return obj.type === 'ITEM_VARIATION' && !!obj.itemVariationData
+}
+
+export type ModifierAmplify = {
+  merchantId: string
+  modifierId: string
+  modifierListId: string
+  name: string
+  priceCents: number
+  currency: string
+  version: string
+  isDeleted: boolean
+  raw?: any
+}
+
+export type ModifierListAmplify = {
+  merchantId: string
+  modifierListId: string
+  name: string
+  version: string
+  isDeleted: boolean
+  modifiers: ModifierAmplify[]
 }
 
 export type RequestCodeResponse = {
@@ -170,6 +193,7 @@ export type CreateMenuItemInput = {
   menuId: string
   merchantId: string
   catalogItemId: string
+  catalogVariationId: string
   isFeatured?: boolean
   sortOrder?: number
 }
@@ -179,7 +203,7 @@ export type NormalizedItem = {
   description?: string
   price: number
   image?: string
-  modifiers: NormalizedModifier[]
+  modifierLists: ModifierListAmplify[]
   customName?: string
   sortOrder: number
   isFeatured: boolean
@@ -196,7 +220,8 @@ export type CartTopping = {
 
 export type CartItem = NormalizedItem & {
   quantity: number
-  modifiers: NormalizedModifier[]
+  modifiers: ModifierAmplify[]
+  lineId: string
 }
 
 export type SquareMoney = {
