@@ -18,6 +18,7 @@ function timingSafeEqualStr(a: string, b: string): boolean {
 const env = process.env
 
 export async function GET(req: NextRequest) {
+  console.log('request', req)
   const url = new URL(req.url)
   const code = url.searchParams.get('code')
   const queryState = url.searchParams.get('state') ?? ''
