@@ -9,6 +9,7 @@ import {
 import { Buffer } from 'node:buffer'
 
 export type MerchantSecret = {
+  squareMerchantId: string
   merchantId: string
   accessToken: string
   refreshToken?: string
@@ -73,6 +74,7 @@ export async function upsertMerchantSecret(secret: MerchantSecret, env: string):
   const client = sm
   const SecretId = secretIdFor(secret.merchantId, env)
   const SecretString = JSON.stringify({
+    squareMerchantId: secret.squareMerchantId,
     merchantId: secret.merchantId,
     accessToken: secret.accessToken,
     refreshToken: secret.refreshToken,

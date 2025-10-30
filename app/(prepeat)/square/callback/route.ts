@@ -94,7 +94,8 @@ export async function GET(req: NextRequest) {
     // Set tokens in secrets Manager
     const secretARN = await upsertMerchantSecret(
       {
-        merchantId: merchantId,
+        merchantId: prepEatMerchantId,
+        squareMerchantId: merchantId,
         accessToken: accessToken,
         refreshToken: refreshToken,
         squareEnv: env.SQUARE_ENV === 'production' ? 'production' : 'sandbox',

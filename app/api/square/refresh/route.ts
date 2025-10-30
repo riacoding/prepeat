@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
       accessToken: access_token,
       refreshToken: refresh_token,
       tokenExpiresAt: expires_at,
-      tokenrefreshedAt: new Date().toISOString(),
+      tokenRefreshedAt: new Date().toISOString(),
     })
 
     return NextResponse.json({

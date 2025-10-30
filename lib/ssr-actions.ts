@@ -1455,6 +1455,7 @@ export async function getMerchantSecretByArn(secretArn: string): Promise<Merchan
   }
 
   return {
+    squareMerchantId: String(parsed.squareMerchantId),
     merchantId: String(parsed.merchantId),
     accessToken: String(parsed.accessToken),
     refreshToken: parsed.refreshToken ? String(parsed.refreshToken) : undefined,
